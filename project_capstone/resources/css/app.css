@@ -163,25 +163,26 @@
     hsl(240 5.9% 10%);
 }
 
-@layer base {
-    * {
-        @apply border-border;
-    }
-
-    body {
-        @apply bg-background text-foreground;
-    }
-}
-
-/*
-  ---break---
-*/
-
+/* Custom base styles */
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom utilities jika ada */
+@layer utilities {
+  @layer utilities {
+    .force-white-bg {
+      @apply bg-white;
+    }
+  }
+  
+}
+
+@tailwind utilities;
+
+@plugin "daisyui";
