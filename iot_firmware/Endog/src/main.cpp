@@ -2,11 +2,14 @@
 #include <LiquidCrystal_I2C.h>
 #include "HX711.h"
 
-#define DT_PIN 13
+#define DOUT_PIN 13
 #define SCK_PIN 14
 
+#define LCD_COLUMNS 16
+#define LCD_ROWS 2
+
 HX711 scale;
-LiquidCrystal_I2C lcd(0x27, 16, 2);  // Ganti 0x27 ke 0x3F jika perlu
+LiquidCrystal_I2C lcd(0x27, LCD_COLUMNS, LCD_ROWS);  // Ganti 0x27 ke 0x3F jika perlu
 
 void setup()
 {
@@ -19,7 +22,7 @@ void setup()
   lcd.setCursor(0, 0);
   lcd.print("Memulai...");
 
-  scale.begin(DT_PIN, SCK_PIN);
+  scale.begin(DOUT_PIN, SCK_PIN);
   delay(1000);
 
   scale.set_scale(541.33);  // GANTI dengan nilai dari hasil kalibrasi
