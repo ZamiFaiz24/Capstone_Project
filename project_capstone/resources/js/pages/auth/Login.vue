@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
@@ -6,88 +7,138 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthBase from '@/layouts/AuthLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, Link } from '@inertiajs/vue3';
 import { LoaderCircle } from 'lucide-vue-next';
+import axios from 'axios';
+import { router } from '@inertiajs/vue3' // ✅ Impor router dengan benar
+
+const errors = ref('')
+
+const login = async () => {
+  try {
+    // 1. Ambil CSRF token
+    await axios.get('/sanctum/csrf-cookie')
+
+    // 2. Kirim login
+    await axios.post('/login', {
+      email: form.email,
+      password: form.password,
+    }, {
+      withCredentials: true,
+    })
+
+    // 3. Redirect atau refresh halaman
+    router.get('/dashboard')
+  } catch (error: any) {
+    if (error.response.status === 422) {
+      errors.value = error.response.data.errors
+    }
+  }
+}
 
 defineProps<{
     status?: string;
     canResetPassword: boolean;
 }>();
 
+
 const form = useForm({
-    email: '',
-    password: '',
-    remember: false,
+  email: '',
+  password: '',
+  remember: false,
 });
 
-const submit = () => {
-    form.post(route('login'), {
-        onFinish: () => form.reset('password'),
-    });
+const handleForgotPassword = () => {
+  alert('Fitur lupa password akan segera hadir!');
+};
+
+const handleCreateAccount = () => {
+  alert('Fitur buat akun baru akan segera hadir!');
 };
 </script>
 
 <template>
-    <AuthBase title="Log in to your account" description="Enter your email and password below to log in">
-        <Head title="Log in" />
+  <div
+    class="w-screen h-screen flex items-center justify-center bg-slate-100"
+    style="background-image: url('/images/bg.jpg'); background-size: cover; background-position: center;"
+  >
+    <div class="w-[900px] h-[700px] rounded-[20px] bg-white shadow-[2px_6px_4px_0px_rgba(0,0,0,0.25)] flex">
+      <!-- Left side image -->
+      <img
+        src="/images/telur2.jpg"
+        alt="Fresh eggs in a basket"
+        class="w-[446px] h-[700px] rounded-l-[20px] object-cover"
+      />
 
-        <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">
-            {{ status }}
-        </div>
+      <!-- Right side form -->
+      <div class="flex-1 relative px-[59px] py-[75px]">
+        <!-- Title -->
+        <h1 class="absolute left-[59px] top-[75px] w-[125px] h-[54px] m-0 text-[36px] font-bold text-blue-600 font-poppins-bold">
+          Masuk
+        </h1>
 
-        <form @submit.prevent="submit" class="flex flex-col gap-6">
-            <div class="grid gap-6">
-                <div class="grid gap-2">
-                    <Label for="email">Email address</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        required
-                        autofocus
-                        :tabindex="1"
-                        autocomplete="email"
-                        v-model="form.email"
-                        placeholder="email@example.com"
-                    />
-                    <InputError :message="form.errors.email" />
-                </div>
-
-                <div class="grid gap-2">
-                    <div class="flex items-center justify-between">
-                        <Label for="password">Password</Label>
-                        <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm" :tabindex="5">
-                            Forgot password?
-                        </TextLink>
-                    </div>
-                    <Input
-                        id="password"
-                        type="password"
-                        required
-                        :tabindex="2"
-                        autocomplete="current-password"
-                        v-model="form.password"
-                        placeholder="Password"
-                    />
-                    <InputError :message="form.errors.password" />
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <Label for="remember" class="flex items-center space-x-3">
-                        <Checkbox id="remember" v-model="form.remember" :tabindex="3" />
-                        <span>Remember me</span>
-                    </Label>
-                </div>
-
-                <Button type="submit" class="mt-4 w-full" :tabindex="4" :disabled="form.processing">
-                    <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
-                    Log in
-                </Button>
-            </div>
-
-            <div class="text-center text-sm text-muted-foreground">
-                Don't have an account?
-                <TextLink :href="route('register')" :tabindex="5">Sign up</TextLink>
-            </div>
+        <form @submit.prevent="login" class="flex flex-col gap-6 mt-32 ml-4">
+          <!-- Email -->
+          <div>
+            <label for="email" class="block mb-1 text-lg font-normal text-black font-inter">Email</label>
+            <input
+              id="email"
+              v-model="form.email"
+              type="email"
+              required
+              class="w-[300px] h-[50px] rounded-[15px] border-2 border-blue-600 bg-white text-black shadow px-[15px] text-base font-inter outline-none focus:border-blue-600"
+            />
+          </div>
+          <!-- Password -->
+          <div>
+            <label for="password" class="block mb-1 text-lg font-normal text-black font-inter">Password</label>
+            <input
+              id="password"
+              v-model="form.password"
+              type="password"
+              required
+              class="w-[300px] h-[50px] rounded-[15px] border-2 border-blue-600 bg-white text-black shadow px-[15px] text-base font-inter outline-none focus:border-blue-600"
+            />
+          </div>
+          <!-- Remember Me -->
+          <div class="flex items-center gap-3">
+            <input
+              id="remember-me"
+              v-model="form.remember"
+              type="checkbox"
+              class="w-4 h-4 accent-blue-600"
+            />
+            <label for="remember-me" class="text-sm text-black cursor-pointer font-inter">
+              Ingatkan Saya!
+            </label>
+          </div>
+          <!-- Login Button -->
+          <button
+            type="submit"
+            class="w-[200px] h-[50px] rounded-[15px] bg-blue-600 border-none cursor-pointer flex items-center justify-center hover:bg-blue-700 transition-colors mx-auto"
+          >
+            <span class="text-xl font-bold text-gray-100 font-inter">Masuk</span>
+          </button>
+          <!-- Links -->
+          <div>
+            <button
+              type="button"
+              @click="handleForgotPassword"
+              class="block text-sm font-bold text-blue-600 bg-transparent border-none cursor-pointer mb-2 p-0 font-inter hover:text-blue-800 transition-colors"
+            >
+              Lupa password kamu?
+            </button>
+            <Link
+              href="/register"
+              class="block text-sm font-bold text-blue-600 bg-transparent border-none cursor-pointer p-0 font-inter hover:text-blue-800 transition-colors"
+            >
+              Buat akun baru
+            </Link>
+          </div>
         </form>
-    </AuthBase>
+      </div>
+    </div>
+  </div>
 </template>
+
+

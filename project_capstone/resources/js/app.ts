@@ -1,4 +1,8 @@
 import '../css/app.css';
+import axios from 'axios'; // <-- Tambahkan ini
+
+axios.defaults.baseURL = 'http://localhost:8000'; // Sesuaikan dengan domain backend kamu
+axios.defaults.withCredentials = true; // Penting untuk Sanctum
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -6,6 +10,9 @@ import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
+import Toast, { PluginOptions } from "vue-toastification";
+// Import the CSS or use your own!
+import "vue-toastification/dist/index.css";
 
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {
@@ -22,6 +29,10 @@ declare module 'vite/client' {
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
+const options: PluginOptions = {
+    // You can set your default options here
+};
+
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) => resolvePageComponent(`./pages/${name}.vue`, import.meta.glob<DefineComponent>('./pages/**/*.vue')),
@@ -29,6 +40,7 @@ createInertiaApp({
         createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
+            .use(Toast, options)
             .mount(el);
     },
     progress: {
