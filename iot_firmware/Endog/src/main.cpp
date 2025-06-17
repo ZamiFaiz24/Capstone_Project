@@ -8,6 +8,9 @@
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
 
+#define SCL_PIN 27
+#define SDA_PIN 26
+
 HX711 scale;
 LiquidCrystal_I2C lcd(0x27, LCD_COLUMNS, LCD_ROWS);  // Ganti 0x27 ke 0x3F jika perlu
 
@@ -15,7 +18,7 @@ void setup()
 {
   Serial.begin(115200);
 
-  Wire.begin(19, 18);  // I2C SDA = 19, SCL = 18
+  Wire.begin(SDA_PIN, SCL_PIN);  // I2C SDA = 26, SCL = 27
   lcd.begin(16, 2);  
   lcd.backlight();
   lcd.clear();
