@@ -28,7 +28,7 @@ void setup()
   scale.begin(DOUT_PIN, SCK_PIN);
   delay(1000);
 
-  scale.set_scale(541.33);  // GANTI dengan nilai dari hasil kalibrasi
+  scale.set_scale(-1106.4);  // GANTI dengan nilai dari hasil kalibrasi
   scale.tare();  // Nolkan timbangan
 
   lcd.setCursor(0, 1);
