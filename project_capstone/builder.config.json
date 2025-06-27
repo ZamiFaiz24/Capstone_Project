@@ -1,6 +1,0 @@
-{
-  "command": "npm run dev",
-  "serverUrl": "http://localhost:8000/register",
-  "authenticateProxy": false,
-  "commitMode": "commits"
-}
