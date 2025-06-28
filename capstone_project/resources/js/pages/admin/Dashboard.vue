@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from "vue";
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
 import AppLayout from '@/layouts/AppLayout.vue';
 import ChartLine from '@/components/ChartLine.vue'
 import ChartPie from '@/components/ChartPie.vue'
 import { type BreadcrumbItem } from '@/types';
-import { NotebookPen, TrendingUp, Heart } from 'lucide-vue-next';
+import { NotebookPen, TrendingUp, Heart, RefreshCcw, FileText } from 'lucide-vue-next';
 import { Head } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3' // jika pakai Inertia
 
 interface HargaTelur {
   id: number
@@ -181,6 +182,48 @@ const pieOptions = {
     legend: { display: false }, // Legend bisa diatur di luar chart jika ingin custom
   },
 }
+
+// Menu state
+const showMenu = ref({
+  pie: false,
+  line: false,
+  table: false,
+  logPerangkat: false,
+  logNotif: false,
+})
+
+// Fungsi unduh chart sebagai PNG (dummy, sesuaikan dengan chart lib Anda)
+function downloadChartAsPng(type) {
+  alert(`Unduh chart ${type} sebagai PNG`);
+  showMenu[type] = false;
+}
+function refreshData(type) {
+  alert(`Perbarui data ${type}`);
+  showMenu[type] = false;
+}
+function showAllData(type) {
+  showMenu[type] = false;
+  if (type === 'table') {
+    // Jika pakai Inertia
+    router.visit('/admin/klaster');
+    // Jika pakai Vue Router biasa:
+    // window.location.href = '/admin/klasterisasi';
+    return;
+  }
+  alert(`Tampilkan semua data ${type}`);
+}
+
+// Untuk klik di luar dropdown
+function handleClickOutside(event: MouseEvent) {
+  const menus = document.querySelectorAll('.more-action-dropdown');
+  menus.forEach(menu => {
+    if (!menu.contains(event.target as Node)) {
+      showMenu.value = { pie: false, line: false, table: false, logPerangkat: false, logNotif: false };
+    }
+  });
+}
+onMounted(() => document.addEventListener('mousedown', handleClickOutside));
+onBeforeUnmount(() => document.removeEventListener('mousedown', handleClickOutside));
 </script>
 
 <template>
@@ -267,11 +310,20 @@ const pieOptions = {
           <div class="md:col-span-4 h-80 bg-white rounded-[15px] border border-gray-300 border-opacity-30 shadow-lg relative p-6 flex flex-col">
             <div class="flex justify-between items-center mb-2">
               <h3 class="text-xl font-semibold text-gray-800 font-poppins">Hasil Klasterisasi Telur</h3>
-              <svg class="w-1 h-4 text-gray-800" fill="currentColor" viewBox="0 0 4 16">
-                <circle cx="2" cy="2" r="2"></circle>
-                <circle cx="2" cy="8" r="2"></circle>
-                <circle cx="2" cy="14" r="2"></circle>
-              </svg>
+              <div class="relative">
+                <button @click="showMenu.pie = !showMenu.pie" class="focus:outline-none">
+                  <svg class="w-1 h-4 text-gray-800" fill="currentColor" viewBox="0 0 4 16">
+                    <circle cx="2" cy="2" r="2"></circle>
+                    <circle cx="2" cy="8" r="2"></circle>
+                    <circle cx="2" cy="14" r="2"></circle>
+                  </svg>
+                </button>
+                <div v-if="showMenu.pie" class="absolute right-0 mt-2 w-48 bg-white border rounded shadow z-50">
+                  <button @click="refreshData('pie')" class="block w-full text-left px-4 py-2 hover:bg-blue-50">🔄 Perbarui Data</button>
+                  <button @click="showAllData('pie')" class="block w-full text-left px-4 py-2 hover:bg-blue-50">📄 Tampilkan Semua Data</button>
+                  <button @click="downloadChartAsPng('pie')" class="block w-full text-left px-4 py-2 hover:bg-blue-50">📤 Unduh sebagai PNG</button>
+                </div>
+              </div>
             </div>
             <div class="flex-1 flex flex-col items-center justify-center">
               <div class="w-48 h-48 mb-4">
@@ -313,13 +365,30 @@ const pieOptions = {
         <!-- Bottom Section -->
         <!-- Bagian Tabel Klasterisasi (Full Konten) -->
         <div class="bg-white rounded-[15px] shadow-lg relative w-full mb-16">
-          <div class="flex justify-between items-center p-4">
+          <div class="flex justify-between items-center p-4 relative">
             <h3 class="text-xl font-semibold text-gray-800 font-poppins">Tabel Klasterisasi Telur</h3>
-            <svg class="w-1 h-4 text-gray-800" fill="currentColor" viewBox="0 0 4 16">
-              <circle cx="2" cy="2" r="2"></circle>
-              <circle cx="2" cy="8" r="2"></circle>
-              <circle cx="2" cy="14" r="2"></circle>
-            </svg>
+            <div class="relative">
+              <button @click="showMenu.table = !showMenu.table" class="focus:outline-none transition hover:bg-blue-100 rounded-full p-1">
+                <svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
+                  <circle cx="10" cy="4" r="2"></circle>
+                  <circle cx="10" cy="10" r="2"></circle>
+                  <circle cx="10" cy="16" r="2"></circle>
+                </svg>
+              </button>
+              <transition name="fade-scale">
+                <div
+                  v-if="showMenu.table"
+                  class="more-action-dropdown absolute right-0 mt-2 w-52 bg-white border border-blue-200 rounded-xl shadow-xl z-50 py-2 animate-dropdown"
+                >
+                  <button @click="refreshData('table')" class="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 transition">
+                    <RefreshCcw class="w-4 h-4 text-blue-800" /> Perbarui Data
+                  </button>
+                  <button @click="showAllData('table')" class="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 transition">
+                    <FileText class="w-4 h-4 text-blue-800" /> Tampilkan Semua Data
+                  </button>
+                </div>
+              </transition>
+            </div>
           </div>
           <div class="mx-8 mb-8 border border-blue-600 rounded-lg overflow-hidden">
             <!-- Table Header -->
@@ -423,6 +492,25 @@ const pieOptions = {
 .fade-up-enter-to, .fade-up-appear-to {
   opacity: 1;
   transform: translateY(0);
+}
+
+.fade-scale-enter-active, .fade-scale-leave-active {
+  transition: opacity 0.18s cubic-bezier(.4,0,.2,1), transform 0.18s cubic-bezier(.4,0,.2,1);
+}
+.fade-scale-enter-from, .fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.fade-scale-enter-to, .fade-scale-leave-from {
+  opacity: 1;
+  transform: scale(1);
+}
+.animate-dropdown {
+  animation: dropdown-fade 0.18s cubic-bezier(.4,0,.2,1);
+}
+@keyframes dropdown-fade {
+  from { opacity: 0; transform: scale(0.95);}
+  to { opacity: 1; transform: scale(1);}
 }
 </style>
 

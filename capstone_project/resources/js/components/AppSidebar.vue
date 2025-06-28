@@ -107,7 +107,7 @@ const icons = {
         Laporan
       </div>
     </div>
-    <SidebarItem :href="role === 'admin' ? '/admin/laporan' : '/user/laporan'" label="Laporan BI" :icon="icons.laporanBI" :is-open="isOpen" />
+    <SidebarItem :href="role === 'admin' ? '/admin/laporan' : '/user/laporan-user'" label="Laporan BI" :icon="icons.laporanBI" :is-open="isOpen" />
   </div>
 </template>
 

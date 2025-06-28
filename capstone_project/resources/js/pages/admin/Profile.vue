@@ -27,9 +27,17 @@ const updateField = (field) => {
 
 <template>
   <AppLayout title="Profil Saya">
-    <div class="max-w-xl mx-auto bg-white rounded-xl shadow-lg p-8 mt-10 border border-blue-200">
-      <h1 class="text-2xl font-bold mb-6 text-blue-700 flex items-center gap-2">
-        <User class="w-6 h-6 text-blue-600" /> Profil Pengguna
+    <div class="w-full min-h-screen p-16">
+      <!-- Page Title -->
+      <div class="mb-2">
+        <h1 class="text-xl font-bold text-blue-600 font-poppins">Profil</h1>
+      </div>
+      <div class="w-30 h-px bg-gray-400 mb-12"></div>
+
+      
+    <div class="bg-white rounded-2xl border border-blue-700 p-6 mb-8">
+      <h1 class="text-2xl font-bold mb-8 text-blue-700 flex items-center gap-2">
+        <User class="w-6 h-6 text-blue-600" /> Informasi Pengguna
       </h1>
 
       <!-- Flash Success -->
@@ -42,11 +50,31 @@ const updateField = (field) => {
         </div>
       </transition>
 
+      <!-- Info tambahan -->
+      <div class="mb-4">
+        <div class="block text-sm text-gray-500 font-medium">Role Pengguna</div>
+        <div class="font-semibold text-blue-700">
+          {{ props.user.role === 'admin' ? 'Admin' : 'User Biasa' }}
+        </div>
+      </div>
+      <div class="mb-4">
+        <div class="block text-sm text-gray-500 font-medium">Tanggal Gabung</div>
+        <div class="font-semibold text-gray-700">
+          {{ new Date(props.user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }}
+        </div>
+      </div>
+      <div v-if="props.user.last_login_at">
+        <div class="text-xs text-gray-500">Terakhir Login</div>
+        <div class="font-semibold text-gray-700">
+          {{ new Date(props.user.last_login_at).toLocaleString('id-ID') }}
+        </div>
+      </div>
+
       <!-- NAMA -->
       <div class="mb-4">
         <label class="block text-sm text-gray-500 font-medium">Nama</label>
         <div v-if="editField !== 'name'" class="flex justify-between items-center">
-          <div class="text-lg font-semibold text-gray-800">{{ props.user.name }}</div>
+          <div class="font-semibold text-gray-700">{{ props.user.name }}</div>
           <button @click="editField = 'name'" class="text-blue-600 hover:underline flex items-center gap-1 text-sm">
             <Edit class="w-4 h-4" /> Ubah
           </button>
@@ -73,7 +101,7 @@ const updateField = (field) => {
       <div class="mb-6">
         <label class="block text-sm text-gray-500 font-medium">Email</label>
         <div v-if="editField !== 'email'" class="flex justify-between items-center">
-          <div class="text-gray-700">{{ props.user.email }}</div>
+          <div class="font-semibold text-gray-700">{{ props.user.email }}</div>
           <button @click="editField = 'email'" class="text-blue-600 hover:underline flex items-center gap-1 text-sm">
             <Edit class="w-4 h-4" /> Ubah
           </button>
@@ -106,6 +134,8 @@ const updateField = (field) => {
         </button>
       </div>
     </div>
+    </div>
+
   </AppLayout>
 </template>
 

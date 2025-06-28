@@ -51,7 +51,7 @@ const tableData = [
 
 <template>
   <AppLayout>
-    <div class="w-full min-h-screen p-16 bg-slate-50">
+    <div class="w-full min-h-screen p-6 md:p-10 bg-slate-50">
       <!-- Judul & Deskripsi -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-blue-700 font-poppins mb-1">Dashboard User</h1>
@@ -59,63 +59,67 @@ const tableData = [
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid md:grid-cols-4 gap-6 mb-10">
-        <div class="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all">
-          <div class="flex items-center space-x-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Produksi -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+          <div class="flex justify-between items-center mb-2">
             <NotebookPen class="text-blue-600 w-6 h-6" />
-            <h3 class="text-md font-semibold text-gray-700 font-poppins">Total Produksi</h3>
+            <span class="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full font-semibold">+5%</span>
           </div>
-          <p class="text-2xl font-bold mt-2 text-gray-900 font-poppins">30 Butir</p>
-          <p class="text-sm text-gray-400 font-inter">Hari Ini</p>
+          <p class="text-sm text-gray-500 font-inter">Total Produksi</p>
+          <p class="text-2xl font-bold text-gray-900 font-poppins mt-1">30 Butir</p>
         </div>
 
-        <div class="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all">
-          <div class="flex items-center space-x-3">
+        <!-- Harga Telur -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+          <div class="flex justify-between items-center mb-2">
             <TrendingUp class="text-blue-600 w-6 h-6" />
-            <h3 class="text-md font-semibold text-gray-700 font-poppins">Harga Telur</h3>
+            <span :class="persentaseKenaikan >= 0 ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'"
+                  class="text-xs px-2 py-1 rounded-full font-semibold">
+              {{ persentaseKenaikan >= 0 ? '+' : '' }}{{ persentaseKenaikan }}%
+            </span>
           </div>
-          <p class="text-2xl font-bold mt-2 text-gray-900 font-poppins">
-            Rp {{ hargaHariIni.toLocaleString('id-ID') }}
-          </p>
-          <p class="text-sm" :class="persentaseKenaikan > 0 ? 'text-green-500' : persentaseKenaikan < 0 ? 'text-red-500' : 'text-gray-400'">
-            {{ persentaseKenaikan > 0 ? '+' : '' }}{{ persentaseKenaikan }}%
-          </p>
+          <p class="text-sm text-gray-500 font-inter">Harga Telur</p>
+          <p class="text-2xl font-bold text-gray-900 font-poppins mt-1">Rp {{ hargaHariIni.toLocaleString('id-ID') }}</p>
         </div>
 
-        <div class="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all">
-          <div class="flex items-center space-x-3">
+        <!-- Status Perangkat -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+          <div class="flex justify-between items-center mb-2">
             <Heart class="text-blue-600 w-6 h-6" />
-            <h3 class="text-md font-semibold text-gray-700 font-poppins">Status Perangkat</h3>
+            <span class="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full font-semibold">Aktif</span>
           </div>
-          <p class="text-2xl font-bold mt-2 text-gray-900 font-poppins">{{ statusPerangkat }}</p>
-          <p class="text-sm text-gray-400 font-inter">Saat Ini</p>
+          <p class="text-sm text-gray-500 font-inter">Status Perangkat</p>
+          <p class="text-2xl font-bold text-gray-900 font-poppins mt-1">{{ statusPerangkat }}</p>
         </div>
 
-        <div class="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all">
-          <div class="flex items-center space-x-3">
+        <!-- Klasterisasi -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+          <div class="flex justify-between items-center mb-2">
             <BarChart class="text-blue-600 w-6 h-6" />
-            <h3 class="text-md font-semibold text-gray-700 font-poppins">Klasterisasi</h3>
           </div>
-          <p class="text-2xl font-bold mt-2 text-gray-900 font-poppins">45% / 55%</p>
-          <p class="text-sm text-gray-400 font-inter">Besar / Kecil</p>
+          <p class="text-sm text-gray-500 font-inter">Klasterisasi Telur</p>
+          <p class="text-2xl font-bold text-gray-900 font-poppins mt-1">45% / 55%</p>
         </div>
       </div>
 
-      <!-- Charts -->
-      <div class="grid md:grid-cols-2 gap-6 mb-10">
-        <div class="bg-white p-6 rounded-2xl shadow-md">
+      <!-- Grafik Line & Pie -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Line Chart: Lebih besar -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm col-span-1 md:col-span-2">
           <h3 class="text-md font-semibold text-gray-700 mb-4 font-poppins">Produksi Harian</h3>
           <ChartLine :chartData="chartData" :chartOptions="chartOptions" />
         </div>
 
-        <div class="bg-white p-6 rounded-2xl shadow-md">
-          <h3 class="text-md font-semibold text-gray-700 mb-4 font-poppins">Klasterisasi Telur</h3>
+        <!-- Pie/Donut Chart: Lebih kecil -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm col-span-1">
+          <h3 class="text-md font-semibold text-gray-700 mb-4 font-poppins">Distribusi Klaster Telur</h3>
           <ChartPie :chartData="pieData" :chartOptions="pieOptions" />
         </div>
       </div>
 
-      <!-- Table -->
-      <div class="bg-white p-6 rounded-2xl shadow-md">
+      <!-- Tabel Klasterisasi -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm">
         <h3 class="text-md font-semibold text-gray-700 mb-4 font-poppins">Tabel Klasterisasi</h3>
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left text-gray-600">
@@ -143,6 +147,7 @@ const tableData = [
     </div>
   </AppLayout>
 </template>
+
 
 <style scoped>
 .font-poppins {

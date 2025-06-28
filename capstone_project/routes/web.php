@@ -108,4 +108,6 @@ Route::middleware([
 Route::middleware(['auth', 'verified'])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [DashboardUserController::class, 'index'])->name('dashboard');
     Route::get('/laporan', [LaporanController::class, 'ambilHarga'])->name('laporan');
+    Route::get('/laporan-user', fn() => Inertia::render('user/LaporanUser'))->name('laporan_user');
 });
+
