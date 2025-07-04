@@ -178,7 +178,7 @@ const exportData = () => {
 
 <template>
   <AppLayout>
-    <div class="w-full min-h-screen p-16">
+    <div class="w-full min-h-screen px-4 md:px-8 lg:px-16 pt-4">
       <!-- Page Title -->
       <div class="mb-2">
         <h1 class="text-xl font-bold text-blue-600 font-poppins">Laporan Sistem</h1>
@@ -293,12 +293,12 @@ const exportData = () => {
       </div>
 
       <!-- Laporan Sistem Section -->
-      <div class="bg-white rounded-lg p-6">
+      <div class="bg-white rounded-2xl border border-blue-700 p-6 mt-8">
         <div class="mb-6">
-          <h2 class="text-2xl font-semibold text-black font-poppins mb-4">
-            Laporan Sistem
+          <h2 class="text-xl lg:text-2xl font-bold text-blue-700 font-poppins mb-4 flex items-center gap-2">
+            <FileText class="w-6 h-6 text-blue-700" /> Laporan Sistem
           </h2>
-          <div class="flex flex-col sm:flex-row gap-3">
+          <div class="flex flex-col sm:flex-row gap-3 mb-4">
             <DropdownFilter
               v-model="selectedFilter"
               :options="filterOptions"
@@ -308,111 +308,67 @@ const exportData = () => {
               @click="refreshData"
               class="flex items-center justify-center gap-2 w-full sm:w-[140px] h-10 px-3 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <span>Refresh Data</span>
+              <RefreshCcw class="w-4 h-4" /> Refresh Data
             </button>
             <button
               @click="openExportModal"
               class="flex items-center justify-center gap-2 w-full sm:w-[140px] h-10 px-3 text-xs font-semibold text-white bg-blue-800 hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-700"
             >
-              <span>Ekspor Data</span>
+              <FileDown class="w-4 h-4" /> Ekspor Data
             </button>
           </div>
           <ExportModal ref="exportModalRef" :onConfirm="exportData" />
         </div>
+
         <!-- Statistik Cards -->
-        <div class="border border-gray-400 p-6">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div class="text-xs font-semibold text-black font-['Inter']">
-              Jumlah Produksi Telur
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <!-- Produksi Telur -->
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 flex flex-col gap-2">
+            <div class="text-xs text-blue-700 font-semibold mb-1 flex items-center gap-2">
+              <BarChart2 class="w-4 h-4" /> Produksi Telur
             </div>
-            <div class="text-xs font-semibold text-black font-['Inter']">
-              Perangkat dan Sensor
-            </div>
-            <div class="text-xs font-semibold text-black font-['Inter']">
-              Harga Telur per KG
-            </div>
+            <div class="text-lg font-bold text-blue-900">200 Butir</div>
+            <div class="text-xs text-gray-600">Rata-rata periode ini: <span class="font-semibold text-blue-700">Stabil</span></div>
+            <div class="text-xs text-gray-500">Tertinggi: 250 (21 Mei 2025) | Terendah: 180 (15 Mei 2025)</div>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Column 1: Produksi Telur -->
-            <div class="space-y-4">
-              <div class="bg-gray-300 p-4 rounded">
-                <div class="flex items-center mb-2">
-                  <svg class="w-3 h-1 mr-2" viewBox="0 0 12 2" fill="none">
-                    <path d="M1 1H11" stroke="#0056B3" stroke-width="2" stroke-linecap="round" />
-                  </svg>
-                  <span class="text-xs text-black">Rata-rata Produksi Telur</span>
-                </div>
-                <div class="text-xs font-semibold text-black mb-1">
-                  200 Butir dalam Periode Ini
-                </div>
-                <div class="text-xs text-black font-light">
-                  Rata-rata periode ini terbilang Stabil
-                </div>
-              </div>
-              <div class="bg-gray-300 p-4 rounded">
-                <div class="flex items-center mb-2">
-                  <svg class="w-3 h-2 mr-2" viewBox="0 0 16 10" fill="none">
-                    <path d="M14 8L8 2L2 8" stroke="#0B8B1E" stroke-width="3" stroke-linecap="round" />
-                  </svg>
-                  <span class="text-xs text-black">Produksi Telur Tertinggi</span>
-                </div>
-                <div class="text-xs font-semibold text-black mb-1">
-                  200 Butir dalam Periode Ini
-                </div>
-                <div class="text-xs text-black font-light">
-                  Terjadi Pada Tanggal 21 Mei 2025
-                </div>
-              </div>
-              <div class="bg-gray-300 p-4 rounded">
-                <div class="flex items-center mb-2">
-                  <svg class="w-3 h-2 mr-2" viewBox="0 0 16 10" fill="none">
-                    <path d="M2 2L8 8L14 2" stroke="#CA3434" stroke-width="3" stroke-linecap="round" />
-                  </svg>
-                  <span class="text-xs text-black">Produksi Telur Terendah</span>
-                </div>
-                <div class="text-xs font-semibold text-black mb-1">
-                  200 Butir dalam Periode Ini
-                </div>
-                <div class="text-xs text-black font-light">
-                  Terjadi Pada Tanggal 21 Mei 2025
-                </div>
-              </div>
+          <!-- Hasil Klasterisasi Telur -->
+          <div class="bg-green-50 border border-green-200 rounded-xl p-5 flex flex-col gap-2">
+            <div class="text-xs text-green-700 font-semibold mb-1 flex items-center gap-2">
+              <PieChart class="w-4 h-4" /> Hasil Klasterisasi Telur
             </div>
-            <!-- Column 2: Perangkat dan Sensor -->
-            <div>
-              <div class="bg-gray-300 p-4 rounded">
-                <div class="flex items-center mb-2">
-                  <svg class="w-3 h-2 mr-2" viewBox="0 0 16 10" fill="none">
-                    <path d="M2 2L8 8L14 2" stroke="#CA3434" stroke-width="3" stroke-linecap="round" />
-                  </svg>
-                  <span class="text-xs text-black">Produksi Telur Tertinggi</span>
-                </div>
-                <div class="text-xs font-semibold text-black mb-1">
-                  200 Butir dalam Periode Ini
-                </div>
-                <div class="text-xs text-black font-light">
-                  Terjadi Pada Tanggal 21 Mei 2025
-                </div>
-              </div>
+            <div class="text-lg font-bold text-green-900">Total: 200 Butir</div>
+            <div class="text-xs text-gray-600">
+              Besar: <span class="font-semibold text-blue-700">65%</span> (130 butir)
+              <br>
+              Sedang: <span class="font-semibold text-yellow-700">25%</span> (50 butir)
+              <br>
+              Kecil: <span class="font-semibold text-red-600">10%</span> (20 butir)
             </div>
-            <!-- Column 3: Harga Telur -->
-            <div>
-              <div class="bg-gray-300 p-4 rounded">
-                <div class="flex items-center mb-2">
-                  <svg class="w-3 h-2 mr-2" viewBox="0 0 16 10" fill="none">
-                    <path d="M2 2L8 8L14 2" stroke="#CA3434" stroke-width="3" stroke-linecap="round" />
-                  </svg>
-                  <span class="text-xs text-black">Produksi Telur Tertinggi</span>
-                </div>
-                <div class="text-xs font-semibold text-black mb-1">
-                  200 Butir dalam Periode Ini
-                </div>
-                <div class="text-xs text-black font-light">
-                  Terjadi Pada Tanggal 21 Mei 2025
-                </div>
-              </div>
-            </div>
+            <div class="text-xs text-gray-500">Data diambil dari hasil sortir & klasterisasi periode ini.</div>
           </div>
+          <!-- Harga Telur -->
+          <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-5 flex flex-col gap-2">
+            <div class="text-xs text-yellow-700 font-semibold mb-1 flex items-center gap-2">
+              <TrendingUp class="w-4 h-4" /> Harga Telur per KG
+            </div>
+            <div class="text-lg font-bold text-yellow-900">Rp 27.000</div>
+            <div class="text-xs text-gray-600">Perubahan: <span class="font-semibold text-yellow-700">+2%</span> dari kemarin</div>
+            <div class="text-xs text-gray-500">Tertinggi: Rp 28.000 | Terendah: Rp 25.500</div>
+          </div>
+        </div>
+
+        <!-- Rekomendasi & Insight -->
+        <div class="mt-4">
+          <h3 class="text-base font-bold text-blue-700 mb-2 flex items-center gap-2">
+            <AlertCircle class="w-5 h-5 text-red-500" /> Rekomendasi Sistem
+          </h3>
+          <ul class="list-disc ml-6 text-sm text-gray-700 space-y-1">
+            <li>Periksa perangkat yang tidak aktif untuk mencegah kehilangan data produksi.</li>
+            <li>Rata-rata produksi stabil, namun lakukan pengecekan rutin pada perangkat untuk menjaga performa.</li>
+            <li>Harga telur naik 2% dari kemarin, pertimbangkan strategi penjualan atau stok.</li>
+            <li>Pastikan data sensor selalu terupdate setiap hari untuk analisis yang lebih akurat.</li>
+            <li>Gunakan fitur ekspor untuk backup data bulanan.</li>
+          </ul>
         </div>
       </div>
     </div>

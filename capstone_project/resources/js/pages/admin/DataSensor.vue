@@ -210,7 +210,8 @@ const paginatedNotifikasiLogs = computed(() => {
 
 <template>
   <AppLayout>
-    <div class="w-full min-h-screen p-16 bg-slate-50">
+    <transition name="fade-up" appear>
+      <div class="w-full min-h-screen px-4 md:px-8 lg:px-16 pt-4">
       <!-- Judul Halaman -->
       <div class="mb-2">
         <h1 class="text-xl font-bold text-blue-600 font-poppins">Data Sensor</h1>
@@ -260,24 +261,39 @@ const paginatedNotifikasiLogs = computed(() => {
           @update:currentPage="(val) => currentPage = val"
         />
         </div>
-      </div>
 
-      <!-- Log Notifikasi -->
-      <div class="bg-white rounded-2xl border border-blue-700 shadow-lg max-w-6xl mx-auto mt-10">
-        <div class="p-6 pb-2">
-          <h2 class="text-lg font-semibold text-blue-600 font-poppins mb-1">Log Notifikasi</h2>
-        </div>
-        <div class="mb-6 overflow-x-auto px-6">
-          <Table :columns="notifColumns" :rows="paginatedNotifikasiLogs" />
-          <div v-if="isLoadingNotif" class="text-center py-4 text-gray-500">Memuat data notifikasi...</div>
-          <div v-else-if="notifikasiLogs.length === 0" class="text-center py-4 text-gray-400">Tidak ada notifikasi.</div>
-          <PaginationDaisy
-            :total-items="notifTotalItems"
-            :items-per-page="notifItemsPerPage"
-            :current-page="notifCurrentPage"
-            @update:currentPage="(val) => notifCurrentPage = val"
-          />
+        <!-- Log Notifikasi -->
+        <div class="bg-white rounded-2xl border border-blue-700 shadow-lg max-w-6xl mx-auto mt-10">
+          <div class="p-6 pb-2">
+            <h2 class="text-lg font-semibold text-blue-600 font-poppins mb-1">Log Notifikasi</h2>
+          </div>
+          <div class="mb-6 overflow-x-auto px-6">
+            <Table :columns="notifColumns" :rows="paginatedNotifikasiLogs" />
+            <div v-if="isLoadingNotif" class="text-center py-4 text-gray-500">Memuat data notifikasi...</div>
+            <div v-else-if="notifikasiLogs.length === 0" class="text-center py-4 text-gray-400">Tidak ada notifikasi.</div>
+            <PaginationDaisy
+              :total-items="notifTotalItems"
+              :items-per-page="notifItemsPerPage"
+              :current-page="notifCurrentPage"
+              @update:currentPage="(val) => notifCurrentPage = val"
+            />
+          </div>
         </div>
       </div>
+    </transition>
   </AppLayout>
 </template>
+
+<style scoped>
+.fade-up-enter-active, .fade-up-appear-active {
+  transition: opacity 0.6s cubic-bezier(.4,0,.2,1), transform 0.6s cubic-bezier(.4,0,.2,1);
+}
+.fade-up-enter-from, .fade-up-appear-from {
+  opacity: 0;
+  transform: translateY(40px);
+}
+.fade-up-enter-to, .fade-up-appear-to {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>

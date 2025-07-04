@@ -232,7 +232,7 @@ const triggerWadahPenuh = async (wadah: WadahData) => {
 
 <template>
   <AppLayout>
-    <div class="w-full min-h-screen p-16">
+    <div class="w-full min-h-screen px-4 md:px-8 lg:px-16 pt-4">
       <!-- Page Title -->
       <div class="mb-2">
         <h1 class="text-xl font-bold text-blue-600 font-poppins">Klasterisasi</h1>
@@ -280,44 +280,8 @@ const triggerWadahPenuh = async (wadah: WadahData) => {
         </div>
       </div>
 
-      <!-- Charts Section -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Bar Chart -->
-        <ChartBar :chartData="chartData" />
-        <!-- Pie Chart -->
-        <div class="h-80 bg-white rounded-[15px] border border-gray-300 border-opacity-30 shadow-lg relative p-6 flex flex-col">
-          <div class="flex justify-between items-center mb-2">
-              <h3 class="text-xl font-semibold text-gray-800 font-poppins">Hasil Klasterisasi Telur</h3>
-              <svg class="w-1 h-4 text-gray-800" fill="currentColor" viewBox="0 0 4 16">
-              <circle cx="2" cy="2" r="2"></circle>
-              <circle cx="2" cy="8" r="2"></circle>
-              <circle cx="2" cy="14" r="2"></circle>
-              </svg>
-          </div>
-          <div class="flex-1 flex flex-col items-center justify-center">
-              <div class="w-48 h-48 mb-4">
-              <ChartPie :chartData="pieData" :chartOptions="pieOptions" />
-              </div>
-          </div>
-          <!-- Legend custom di bawah kanan -->
-          <div class="flex justify-end pr-6">
-              <div class="flex flex-col gap-2 items-end">
-              <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 rounded-full bg-[#0056B3]"></div>
-                  <span class="text-xs font-semibold text-gray-800 font-poppins">Besar 65%</span>
-              </div>
-              <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 rounded-full bg-[#66BFFF]"></div>
-                  <span class="text-xs font-semibold text-gray-800 font-poppins">Kecil 35%</span>
-              </div>
-              </div>
-          </div>
-        </div>
-      </div>
-
-
       <!-- Data Table Section -->
-      <div class="bg-white rounded-2xl border border-blue-700 p-6">
+      <div class="bg-white rounded-2xl border border-gray-300 p-6 transition-all duration-300 hover:border-blue-600 hover:shadow-xl">
         <!-- Table Header -->
         <div class="mb-6">
           <h2 class="text-lg lg:text-xl font-bold text-gray-900 font-poppins mb-2">
