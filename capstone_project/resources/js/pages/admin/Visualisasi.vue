@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import ChartBar from '@/components/ChartBar.vue'
 import ChartPie from '@/components/ChartPie.vue'
 import ChartLine from '@/components/ChartLine.vue'
@@ -12,6 +12,8 @@ const bulan = ref('')
 const tahun = ref('')
 const bulan2 = ref('')
 const tahun2 = ref('')
+const dataPrediksi = ref<{ tanggal: string; harga: number }[]>([])
+const prediksiDays = ref('7') // default: 7 hari
 
 // Pilihan bulan (1–12)
 const bulanOptions = [
@@ -187,8 +189,8 @@ const areaChartData = computed(() => {
 
   const harga = filtered.map(item => item.harga)
   const rataRata = harga.length
-    ? Array(harga.length).fill((harga.reduce((a, b) => a + b, 0) / harga.length).toFixed(2))
-    : []
+  ? Array(harga.length).fill(parseFloat((harga.reduce((a, b) => a + b, 0) / harga.length).toFixed(2)))
+  : []
 
   return {
     labels,
@@ -223,7 +225,99 @@ const areaChartOptions = {
       position: 'bottom',
       labels: {
         font: { family: 'Inter', size: 12 },
+      },
+    },
+    tooltip: {
+      callbacks: {
+        label: (context: any) => {
+          const label = context.dataset.label || ''
+          const value = context.formattedValue
+          if (label === 'Harga Telur (Rp)') {
+            return `Harga: Rp ${value}`
+          } else if (label === 'Rata-rata') {
+            return `Rata-rata: Rp ${value}`
+          }
+          return `${label}: Rp ${value}`
+        }
       }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: false,
+      min: 23000,
+      max: 30000,
+      ticks: {
+        font: { family: 'Inter', size: 12 },
+      },
+    },
+    x: {
+      ticks: {
+        font: { family: 'Inter', size: 11 },
+        maxRotation: 45,
+        minRotation: 30,
+        autoSkip: true,
+        maxTicksLimit: 10,
+      }
+    }
+  }
+}
+
+const fetchPrediksi = async () => {
+  const res = await fetch(`/api/prediksi-harga?days=${prediksiDays.value}`)
+  const json = await res.json()
+  console.log('Prediksi:', json)
+  if (json.status === 'success') {
+    dataPrediksi.value = json.data
+  }
+}
+
+onMounted(async () => {
+  const response = await fetch('/api/data-harga')
+  const result = await response.json()
+  dataHarga.value = result
+
+  await fetchPrediksi() // Tambahkan ini
+})
+
+watch(prediksiDays, () => {
+  fetchPrediksi()
+})
+
+
+const chartPrediksiData = computed(() => {
+  return {
+    labels: dataPrediksi.value.map(item => {
+      const date = new Date(item.tanggal)
+      return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short'
+      })
+    }),
+    datasets: [
+      {
+        label: 'Prediksi Harga (Rp)',
+        data: dataPrediksi.value.map(item => item.harga), // <-- sebelumnya: item.prediksi
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16,185,129,0.15)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+      }
+    ]
+  }
+})
+
+
+const chartPrediksiOptions = {
+  responsive: true,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'bottom',
+      labels: {
+        font: { family: 'Inter', size: 12 },
+      },
     },
   },
   scales: {
@@ -244,13 +338,11 @@ const areaChartOptions = {
     }
   }
 }
-
-
 </script>
 
 <template>
   <AppLayout>
-    <div class="min-h-screen bg-slate-50 p-8">
+    <div class="w-full min-h-screen px-4 md:px-8 lg:px-16 pt-4">
       <!-- Page Title -->
       <div class="mb-2">
         <h1 class="text-xl font-bold text-blue-600 font-poppins">Visualisasi Data</h1>
@@ -351,6 +443,32 @@ const areaChartOptions = {
               class="w-full"
             />
             <p v-else class="text-sm text-gray-400 font-inter">Memuat data grafik area...</p>
+          </div>
+        </div>
+        <!-- Grafik Prediksi Harga Telur -->
+        <div class="h-100 bg-white rounded-[15px] border border-gray-300 border-opacity-30 shadow-lg p-6 flex flex-col mb-8">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-800 font-poppins mb-1">Prediksi Harga Telur</h2>
+              <p class="text-xs text-gray-400 font-inter">Prediksi otomatis berdasarkan model Prophet</p>
+            </div>
+            <div class="flex gap-2 items-center">
+              <select v-model="prediksiDays" class="border border-blue-500 text-blue-500 rounded-md px-2 py-1 text-sm">
+                <option value="7">7 Hari</option>
+                <option value="14">14 Hari</option>
+                <option value="30">30 Hari</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex-1 flex items-center justify-center overflow-x-auto">
+            <ChartLine
+              v-if="chartPrediksiData.datasets.length"
+              :chartData="chartPrediksiData"
+              :chartOptions="chartPrediksiOptions"
+              class="w-full"
+            />
+            <p v-else class="text-sm text-gray-400 font-inter">Memuat data prediksi harga...</p>
           </div>
         </div>
       </div>

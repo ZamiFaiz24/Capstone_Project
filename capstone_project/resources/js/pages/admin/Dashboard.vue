@@ -3,10 +3,10 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
 import AppLayout from '@/layouts/AppLayout.vue';
 import ChartLine from '@/components/ChartLine.vue'
 import ChartPie from '@/components/ChartPie.vue'
+import Table from '@/components/Table.vue'
 import { type BreadcrumbItem } from '@/types';
 import { NotebookPen, TrendingUp, Heart, RefreshCcw, FileText } from 'lucide-vue-next';
-import { Head } from '@inertiajs/vue3';
-import { router } from '@inertiajs/vue3' // jika pakai Inertia
+import { router } from '@inertiajs/vue3' 
 
 interface HargaTelur {
   id: number
@@ -20,7 +20,12 @@ const props = defineProps<{
   statusPerangkat: string
   hargaHariIni: HargaTelur | null
   persentaseKenaikan: number | null
-  // ...props lain
+  logPerangkatData: Array<{
+  waktu: string;
+  perangkat: string;
+  status: string;
+  catatan: string;
+}>  // ...props lain
 }>()
 
 const kenaikanLabel = computed(() => {
@@ -34,10 +39,6 @@ const kenaikanClass = computed(() => {
   return props.persentaseKenaikan > 0 ? 'text-green-600' : 'text-red-600'
 })
 
-// Breadcrumbs
-const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Dashboard', href: '/dashboard' },
-];
 
 // Chart data 
 const chartData = {
@@ -78,6 +79,7 @@ const chartData = {
 
 const chartOptions = {
   responsive: true,
+  maintainAspectRatio: false, // <--- ini penting!
   plugins: {
     legend: { display: true, position: 'bottom', labels: { font: { family: 'Inter', size: 13 } } },
     title: { display: false },
@@ -184,32 +186,46 @@ const pieOptions = {
 }
 
 // Menu state
-const showMenu = ref({
+
+const showMenu = ref<{
+  pie: boolean;
+  line: boolean;
+  logPerangkat: boolean;
+  table: boolean;
+  logNotif: boolean;
+}>({
   pie: false,
   line: false,
   table: false,
   logPerangkat: false,
   logNotif: false,
-})
+});
 
-// Fungsi unduh chart sebagai PNG (dummy, sesuaikan dengan chart lib Anda)
-function downloadChartAsPng(type) {
+// Ambil key-nya langsung dari showMenu biar aman
+type ChartType = keyof typeof showMenu.value;
+
+function downloadChartAsPng(type: ChartType) {
   alert(`Unduh chart ${type} sebagai PNG`);
-  showMenu[type] = false;
+  showMenu.value[type] = false;
 }
-function refreshData(type) {
+
+function refreshData(type: ChartType) {
   alert(`Perbarui data ${type}`);
-  showMenu[type] = false;
+  showMenu.value[type] = false;
 }
-function showAllData(type) {
-  showMenu[type] = false;
+
+function showAllData(type: ChartType) {
+  showMenu.value[type] = false;
+
   if (type === 'table') {
-    // Jika pakai Inertia
     router.visit('/admin/klaster');
-    // Jika pakai Vue Router biasa:
-    // window.location.href = '/admin/klasterisasi';
     return;
   }
+  else if (type === 'logPerangkat') {
+    router.visit('/admin/perangkat');
+    return;
+  }
+
   alert(`Tampilkan semua data ${type}`);
 }
 
@@ -229,12 +245,12 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleClickOutsi
 <template>
   <AppLayout>
     <transition name="fade-up" appear>
-      <div class="p-16 min-h-screen">
+      <div class="w-full min-h-screen px-4 md:px-8 lg:px-16 pt-4">
         <!-- Judul Halaman -->
-      <div class="mb-2">
-        <h1 class="text-xl font-bold text-blue-600 font-poppins">Dashboard</h1>
-      </div>
-      <div class="w-30 h-px bg-gray-400 mb-12"></div>
+        <div class="mb-2">
+          <h1 class="text-xl font-bold text-blue-600 font-poppins">Dashboard</h1>
+        </div>
+        <div class="w-30 h-px bg-gray-400 mb-12"></div>
 
         <h1 class="text-xl font-bold">Selamat Datang Admin!</h1>
 
@@ -287,7 +303,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleClickOutsi
           </div>
           <!-- Card 3 -->
           <div
-            class="group w-full h-[180px] bg-white rounded-[15px] border border-gray-300 cursor-pointer border-opacity-30 p-5 relative
+            class="group w-full h-[180px] bg-white rounded-[15px] border border-gray-300 border-opacity-30 p-5 relative
               transition-all duration-300 hover:border-blue-600 hover:shadow-xl"
           >
             <Heart class="w-7 h-8 mb-3 transition-colors duration-300 text-blue-600" />
@@ -307,22 +323,31 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleClickOutsi
         <!-- Charts Section -->
         <div class="grid grid-cols-10 gap-8 mb-16">
           <!-- Pie Chart: 40% (4/10) -->
-          <div class="md:col-span-4 h-80 bg-white rounded-[15px] border border-gray-300 border-opacity-30 shadow-lg relative p-6 flex flex-col">
+          <div class="md:col-span-4 h-96 bg-white rounded-[15px] border border-gray-300 border-opacity-30 p-5 relative
+              transition-all duration-300 hover:border-blue-600 hover:shadow-xl flex flex-col">
             <div class="flex justify-between items-center mb-2">
               <h3 class="text-xl font-semibold text-gray-800 font-poppins">Hasil Klasterisasi Telur</h3>
               <div class="relative">
-                <button @click="showMenu.pie = !showMenu.pie" class="focus:outline-none">
-                  <svg class="w-1 h-4 text-gray-800" fill="currentColor" viewBox="0 0 4 16">
-                    <circle cx="2" cy="2" r="2"></circle>
-                    <circle cx="2" cy="8" r="2"></circle>
-                    <circle cx="2" cy="14" r="2"></circle>
+                <button @click="showMenu.pie = !showMenu.pie" class="focus:outline-none transition hover:bg-blue-100 rounded-full p-1 cursor-pointer">
+                  <svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="4" r="2"></circle>
+                    <circle cx="10" cy="10" r="2"></circle>
+                    <circle cx="10" cy="16" r="2"></circle>
                   </svg>
                 </button>
-                <div v-if="showMenu.pie" class="absolute right-0 mt-2 w-48 bg-white border rounded shadow z-50">
-                  <button @click="refreshData('pie')" class="block w-full text-left px-4 py-2 hover:bg-blue-50">🔄 Perbarui Data</button>
-                  <button @click="showAllData('pie')" class="block w-full text-left px-4 py-2 hover:bg-blue-50">📄 Tampilkan Semua Data</button>
-                  <button @click="downloadChartAsPng('pie')" class="block w-full text-left px-4 py-2 hover:bg-blue-50">📤 Unduh sebagai PNG</button>
-                </div>
+                <transition name="fade-scale">
+                  <div
+                    v-if="showMenu.pie"
+                    class="more-action-dropdown absolute right-0 mt-2 w-52 bg-white border border-blue-200 rounded-xl shadow-xl z-50 py-2 animate-dropdown"
+                  >
+                    <button @click="refreshData('table')" class="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 transition">
+                      <RefreshCcw class="w-4 h-4 text-blue-800" /> Perbarui Data
+                    </button>
+                    <button @click="showAllData('table')" class="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 transition">
+                      <FileText class="w-4 h-4 text-blue-800" /> Tampilkan Semua Data
+                    </button>
+                  </div>
+                </transition>
               </div>
             </div>
             <div class="flex-1 flex flex-col items-center justify-center">
@@ -345,30 +370,46 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleClickOutsi
             </div>
           </div>
           <!-- Line Chart: 60% (6/10) -->
-          <div class="md:col-span-6 h-80 bg-white rounded-[15px] shadow-lg relative p-6 overflow-auto flex flex-col">
+          <div class="md:col-span-6 h-96 bg-white rounded-[15px] shadow-lg relative p-6 overflow-auto flex flex-col">
             <div class="flex justify-between items-center p-4">
               <h3 class="text-xl font-semibold text-gray-800 font-poppins">Grafik Produksi Harian Telur</h3>
-              <svg class="w-1 h-4 text-gray-800" fill="currentColor" viewBox="0 0 4 16">
-                <circle cx="2" cy="2" r="2"></circle>
-                <circle cx="2" cy="8" r="2"></circle>
-                <circle cx="2" cy="14" r="2"></circle>
-              </svg>
+              <div class="relative">
+                <button @click="showMenu.line = !showMenu.line" class="focus:outline-none transition hover:bg-blue-100 rounded-full p-1 cursor-pointer ">
+                  <svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="4" r="2"></circle>
+                    <circle cx="10" cy="10" r="2"></circle>
+                    <circle cx="10" cy="16" r="2"></circle>
+                  </svg>
+                </button>
+                <transition name="fade-scale">
+                  <div
+                    v-if="showMenu.line"
+                    class="more-action-dropdown absolute right-0 mt-2 w-52 bg-white border border-blue-200 rounded-xl shadow-xl z-50 py-2 animate-dropdown"
+                  >
+                    <button @click="refreshData('table')" class="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 transition">
+                      <RefreshCcw class="w-4 h-4 text-blue-800" /> Perbarui Data
+                    </button>
+                    <button @click="showAllData('table')" class="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 transition">
+                      <FileText class="w-4 h-4 text-blue-800" /> Tampilkan Semua Data
+                    </button>
+                  </div>
+                </transition>
+              </div>
             </div>
             <div class="flex-1 flex items-center justify-center">
-              <div class="w-full h-64">
-                <ChartLine :chartData="chartData" :chartOptions="chartOptions" />
+              <div class="w-full h-64 md:h-80 lg:h-64">
+                <ChartLine class="w-full h-full" :chartData="chartData" :chartOptions="chartOptions" />
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Bottom Section -->
         <!-- Bagian Tabel Klasterisasi (Full Konten) -->
-        <div class="bg-white rounded-[15px] shadow-lg relative w-full mb-16">
+        <div class="bg-white rounded-[15px] shadow-lg relative w-full h-136 mb-16">
           <div class="flex justify-between items-center p-4 relative">
             <h3 class="text-xl font-semibold text-gray-800 font-poppins">Tabel Klasterisasi Telur</h3>
             <div class="relative">
-              <button @click="showMenu.table = !showMenu.table" class="focus:outline-none transition hover:bg-blue-100 rounded-full p-1">
+              <button @click="showMenu.table = !showMenu.table" class="focus:outline-none transition hover:bg-blue-100 rounded-full p-1 cursor-pointer">
                 <svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
                   <circle cx="10" cy="4" r="2"></circle>
                   <circle cx="10" cy="10" r="2"></circle>
@@ -416,29 +457,40 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleClickOutsi
           <div class="md:col-span-6 bg-white rounded-[15px] shadow-lg h-[550px] relative w-full p-6 overflow-auto">
             <div class="flex justify-between items-center p-4">
               <h3 class="text-xl font-semibold text-gray-800 font-poppins">Tabel Log Perangkat</h3>
-              <svg class="w-1 h-4 text-gray-800" fill="currentColor" viewBox="0 0 4 16">
-                <circle cx="2" cy="2" r="2"></circle>
-                <circle cx="2" cy="8" r="2"></circle>
-                <circle cx="2" cy="14" r="2"></circle>
-              </svg>
+              <div class="relative">
+                <button @click="showMenu.logPerangkat = !showMenu.logPerangkat" class="focus:outline-none transition hover:bg-blue-100 rounded-full p-1 cursor-pointer">
+                  <svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="4" r="2"></circle>
+                    <circle cx="10" cy="10" r="2"></circle>
+                    <circle cx="10" cy="16" r="2"></circle>
+                  </svg>
+                </button>
+                <transition name="fade-scale">
+                  <div
+                    v-if="showMenu.logPerangkat"
+                    class="more-action-dropdown absolute right-0 mt-2 w-52 bg-white border border-blue-200 rounded-xl shadow-xl z-50 py-2 animate-dropdown"
+                  >
+                    <button @click="refreshData('logPerangkat')" class="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 transition">
+                      <RefreshCcw class="w-4 h-4 text-blue-800" /> Perbarui Data
+                    </button>
+                    <button @click="showAllData('logPerangkat')" class="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 transition">
+                      <FileText class="w-4 h-4 text-blue-800" /> Tampilkan Semua Data
+                    </button>
+                  </div>
+                </transition>
+              </div>
             </div>
             <div class="mx-4 mb-4 border border-blue-600 rounded-lg overflow-hidden">
               <!-- Table Header -->
-              <div class="flex bg-blue-200 border-b border-blue-600">
-                <div class="w-12 p-3 border-r border-gray-400 text-xs font-bold text-black font-inter">ID</div>
-                <div class="flex-1 p-3 border-r border-gray-400 text-xs font-bold text-black font-inter">Perangkat</div>
-                <div class="flex-1 p-3 border-r border-gray-400 text-xs font-bold text-black font-inter">Status</div>
-                <div class="flex-1 p-3 border-r border-gray-400 text-xs font-bold text-black font-inter">Catatan</div>
-                <div class="flex-1 p-3 text-xs font-bold text-black font-inter">Waktu</div>
-              </div>
-              <!-- Table Rows -->
-              <div v-for="log in logPerangkatData" :key="log.id" class="flex border-b border-blue-600">
-                <div class="w-12 p-3 border-r border-gray-400 text-xs text-black font-inter">{{ log.id }}</div>
-                <div class="flex-1 p-3 border-r border-gray-400 text-xs text-black font-inter">{{ log.perangkat }}</div>
-                <div class="flex-1 p-3 border-r border-gray-400 text-xs text-black font-inter">{{ log.status }}</div>
-                <div class="flex-1 p-3 border-r border-gray-400 text-xs text-black font-inter">{{ log.catatan }}</div>
-                <div class="flex-1 p-3 text-xs text-black font-inter">{{ log.waktu }}</div>
-              </div>
+              <Table
+              :columns="[
+                { label: 'Waktu', key: 'waktu' },
+                { label: 'Perangkat', key: 'perangkat' },
+                { label: 'Status', key: 'status' },
+                { label: 'Catatan', key: 'catatan' }
+              ]"
+              :rows="props.logPerangkatData"
+            />
             </div>
           </div>
           <!-- Log Notifikasi: 40% -->
@@ -475,13 +527,6 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleClickOutsi
 </template>
 
 <style scoped>
-.font-poppins {
-  font-family: "Poppins", -apple-system, Roboto, Helvetica, sans-serif;
-}
-.font-inter {
-  font-family: "Inter", -apple-system, Roboto, Helvetica, sans-serif;
-}
-
 .fade-up-enter-active, .fade-up-appear-active {
   transition: opacity 0.6s cubic-bezier(.4,0,.2,1), transform 0.6s cubic-bezier(.4,0,.2,1);
 }
