@@ -31,17 +31,19 @@ class DeviceController extends Controller
         $validated = $request->validate([
             'sensor_id' => 'nullable|string',
             'berat' => 'required|numeric',
+            'intensitas' => 'required|numeric', // ✅ tambahkan validasi ini
         ]);
 
-        $sensor = SensorData::create($validated);
+        $sensor = SensorData::create($validated); // Simpan ke DB
 
         Log::info('📡 Data dari ESP diterima dan disimpan: ID = ' . $sensor->id);
 
-        // Auto-klasterisasi langsung ke Flask
+        // Kirim ke Flask untuk klasterisasi
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
         ])->post('http://127.0.0.1:5000/predict', [
             'berat' => $sensor->berat,
+            'intensitas' => $sensor->intensitas, // ✅ kirim juga intensitas
         ]);
 
         if ($response->successful()) {
@@ -53,6 +55,7 @@ class DeviceController extends Controller
                 DataKlaster::create([
                     'data_id' => $sensor->id,
                     'berat_telur' => $sensor->berat,
+                    'intensitas' => $sensor->intensitas, // ✅ simpan juga intensitas
                     'klaster' => $klaster,
                     'waktu_klaster' => now(),
                 ]);
@@ -64,7 +67,7 @@ class DeviceController extends Controller
 
         return response()->json([
             'message' => 'Data dan klaster berhasil diproses',
-            'klaster' => $klaster ?? null, // pastikan ini string: "besar", "sedang", "kecil"
+            'klaster' => $klaster ?? null,
         ]);
     }
 }
