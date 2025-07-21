@@ -1,30 +1,42 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { onClickOutside } from "@vueuse/core";
-interface Option {
-  label: string;
-  value: string;
-}
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+
 const props = defineProps<{
-  options: Option[];
   modelValue: string;
-}>();
-const emits = defineEmits(["update:modelValue"]);
+  options: { label: string; value: string }[];
+}>()
+
+const emit = defineEmits<{
+  (event: 'update:modelValue', value: string): void;
+}>()
 
 const isOpen = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
 
-// Tutup dropdown jika klik di luar
-onClickOutside(dropdownRef, () => isOpen.value = false);
-
-const selectedLabel = computed(() =>
-  props.options.find(opt => opt.value === props.modelValue)?.label || "Filter Data"
-);
+const selectedLabel = computed(() => {
+  const selected = props.options.find(opt => opt.value === props.modelValue);
+  return selected ? selected.label : 'Pilih';
+});
 
 function selectOption(value: string) {
-  emits("update:modelValue", value);
+  emit('update:modelValue', value);
   isOpen.value = false;
 }
+
+// Tutup dropdown saat klik di luar komponen
+function handleClickOutside(event: MouseEvent) {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target as Node)) {
+    isOpen.value = false;
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
@@ -39,11 +51,16 @@ function selectOption(value: string) {
         <path d="M1 1L7 7L13 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
+
+    <!-- Dropdown List -->
     <ul
       v-if="isOpen"
       class="absolute left-0 mt-1 bg-white rounded-lg w-[140px] z-10 shadow border border-blue-400 p-0"
     >
-      <li v-for="option in props.options" :key="option.value">
+      <li
+        v-for="option in props.options"
+        :key="option.value"
+      >
         <a
           class="block text-sm font-semibold font-inter px-3 py-2 rounded hover:bg-blue-100 hover:text-blue-700 transition-colors duration-150 cursor-pointer"
           :class="modelValue === option.value ? 'text-blue-600 bg-blue-50' : 'text-gray-700'"

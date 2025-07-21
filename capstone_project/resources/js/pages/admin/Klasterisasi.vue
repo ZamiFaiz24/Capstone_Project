@@ -1,128 +1,238 @@
 <script setup lang="ts">
 import AppLayout from "@/layouts/AppLayout.vue";
-import ChartPie from '@/components/ChartPie.vue'
-import ChartBar from '@/components/ChartBar.vue'
-import DropdownFilter from '@/components/DropdownFilter.vue'
-import Table from '@/components/Table.vue'
-import { ref, computed, watch } from "vue";
-import { useToast, POSITION } from "vue-toastification"
-import api from "@/lib/axios";
+import ChartPie from '@/components/ChartPie.vue';
+import ChartBar from '@/components/ChartBar.vue';
+import DropdownFilter from '@/components/DropdownFilter.vue';
+import Table from '@/components/Table.vue';
+import { ref, computed, watch, onMounted } from "vue";
+import { useToast } from "vue-toastification";
 import axios from "axios";
+import dayjs from "dayjs";
 
 // Toast configuration
-const toast = useToast()
+const toast = useToast();
 
-// TypeScript interfaces
-interface ClusterData {
+const loadData = async () => {
+  console.log('Loading...')
+}
+
+
+// TypeScript Interfaces
+type ClusterData = {
   id: number;
   berat: number;
-  klaster: "Kecil" | "Besar";
-  kualitas: "Bagus" | "Jelek";
+  intensitas: number;
+  klaster: number;
+  label_tampilan: string;
+  label_ukuran: string;
+  label_kualitas: string;
   waktu_masuk: string;
   status_penuh: boolean;
-}
-interface FilterOption {
+};
+
+type FilterOption = {
   value: string;
   label: string;
-}
-interface WadahData {
+};
+
+type WadahData = {
   id_wadah: number;
   klaster: string;
   kapasitas_max: number;
   total_berat: number;
+  jumlah_telur: number;
   status_penuh: boolean;
-}
+};
 
-// Reactive data
+type WadahBackendResponse = {
+  nama: string;
+  jumlahTelur: number;
+  totalBerat: number;
+};
+
+// Reactive Data
 const allData = ref<ClusterData[]>([]);
 const currentPage = ref(1);
 const itemsPerPage = 10;
+const wadahList = ref<WadahData[]>([]);
+const selectedFilter = ref("");
+const batasTelur = 5;
 
-const wadahList = ref<WadahData[]>([
-  { id_wadah: 1, klaster: "besar-bagus", kapasitas_max: 5.0, total_berat: 4.7, status_penuh: false },
-  { id_wadah: 2, klaster: "kecil-bagus", kapasitas_max: 5.0, total_berat: 5.0, status_penuh: true },
-  { id_wadah: 3, klaster: "jelek", kapasitas_max: 5.0, total_berat: 2.5, status_penuh: false }, // Tambahan card jelek
-]);
+const wadahTelur = ref<WadahData[]>([]);
 
-// Dropdown filter logic
+// Filter Options
 const filterOptions: FilterOption[] = [
   { value: "today", label: "Hari ini" },
   { value: "yesterday", label: "Kemarin" },
   { value: "week", label: "Minggu ini" },
   { value: "month", label: "Bulan ini" },
 ];
-const selectedFilter = ref("");
 
 const selectedFilterLabel = computed(() =>
   filterOptions.find(opt => opt.value === selectedFilter.value)?.label || "Filter Data"
 );
 
-// Chart data for bar chart
-const chartData = [
-  { kecil: 400, besar: 350 },
-  { kecil: 450, besar: 300 },
-  { kecil: 150, besar: 350 },
-  { kecil: 130, besar: 150 },
-  { kecil: 120, besar: 400 },
-  { kecil: 450, besar: 350 },
-  { kecil: 200, besar: 400 },
-];
+watch(selectedFilter, () => {
+  currentPage.value = 1;
+});
 
-// Generate mock data
-const generateMockData = (): ClusterData[] => {
-  const data: ClusterData[] = [];
-  const klasterOptions: ("Kecil" | "Besar")[] = ["Kecil", "Besar"];
-  const kualitasOptions: ("Bagus" | "Jelek")[] = ["Bagus", "Jelek"];
-  for (let i = 1; i <= 100; i++) {
-    data.push({
-      id: i,
-      berat: +(Math.random() * 100 + 40).toFixed(2),
-      klaster: klasterOptions[i % 2],
-      kualitas: kualitasOptions[i % 2],
-      waktu_masuk: `2025-06-${(i % 30 + 1).toString().padStart(2, "0")} 08:00:00`,
-      status_penuh: i % 2 === 0,
-    });
-  }
-  return data;
-};
-allData.value = generateMockData();
+const filteredAllData = computed(() => {
+  const today = dayjs().format("YYYY-MM-DD");
+  const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+  const startOfWeek = dayjs().startOf("week");
+  const startOfMonth = dayjs().startOf("month");
 
-// Pagination & Table Data
-const totalItems = computed(() => allData.value.length);
+  return allData.value.filter(item => {
+    const itemDate = dayjs(item.waktu_masuk).format("YYYY-MM-DD");
+    switch (selectedFilter.value) {
+      case "today": return itemDate === today;
+      case "yesterday": return itemDate === yesterday;
+      case "week": return dayjs(itemDate).isAfter(startOfWeek);
+      case "month": return dayjs(itemDate).isAfter(startOfMonth);
+      default: return true;
+    }
+  });
+});
+
+const totalItems = computed(() => filteredAllData.value.length);
 const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage));
 const startItem = computed(() => (currentPage.value - 1) * itemsPerPage + 1);
-const endItem = computed(() =>
-  Math.min(currentPage.value * itemsPerPage, totalItems.value),
-);
+const endItem = computed(() => Math.min(currentPage.value * itemsPerPage, totalItems.value));
+
 const currentData = computed(() => {
   const startIndex = (currentPage.value - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  return allData.value.slice(startIndex, endIndex);
+  return filteredAllData.value.slice(startIndex, startIndex + itemsPerPage).map((row, index) => ({
+    ...row,
+    no: startIndex + index + 1,
+  }));
 });
+
 const pageNumbers = computed(() => {
   const pages: (number | string)[] = [];
   const maxVisiblePages = 5;
+
   if (totalPages.value <= maxVisiblePages) {
-    for (let i = 1; i <= totalPages.value; i++) {
-      pages.push(i);
-    }
+    for (let i = 1; i <= totalPages.value; i++) pages.push(i);
+  } else if (currentPage.value <= 3) {
+    pages.push(1, 2, 3, 4, "...", totalPages.value);
+  } else if (currentPage.value >= totalPages.value - 2) {
+    pages.push(1, "...", totalPages.value - 3, totalPages.value - 2, totalPages.value - 1, totalPages.value);
   } else {
-    if (currentPage.value <= 3) {
-      pages.push(1, 2, 3, 4, "...", totalPages.value);
-    } else if (currentPage.value >= totalPages.value - 2) {
-      pages.push(1, "...", totalPages.value - 3, totalPages.value - 2, totalPages.value - 1, totalPages.value);
-    } else {
-      pages.push(1, "...", currentPage.value - 1, currentPage.value, currentPage.value + 1, "...", totalPages.value);
-    }
+    pages.push(1, "...", currentPage.value - 1, currentPage.value, currentPage.value + 1, "...", totalPages.value);
   }
+
   return pages;
 });
 
-// Methods
-const handleRefresh = () => {
-  // Simulasi refresh
-  alert("Data refreshed!");
+const clusterColumns = [
+  {
+    key: 'no',
+    label: 'No',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300',
+    render: (row: any) => `<span class="font-semibold">${row.no}</span>`,
+  },
+  {
+    key: 'berat',
+    label: 'Berat (gr)',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300',
+  },
+  {
+    key: 'intensitas',
+    label: 'Intensitas',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300',
+  },
+  {
+    key: 'klaster',
+    label: 'Kode Klaster',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300',
+    render: (row: any) => `<span class="font-bold text-gray-800">${row.klaster}</span>`,
+  },
+  {
+    key: 'label_ukuran',
+    label: 'Ukuran',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300',
+    render: (row: any) => {
+      const color = row.label_ukuran === 'Besar' ? 'text-green-600' : 'text-blue-600';
+      return `<span class="${color} font-semibold">${row.label_ukuran}</span>`;
+    },
+  },
+  {
+    key: 'label_kualitas',
+    label: 'Kualitas',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300',
+    render: (row: any) => {
+      const color = row.label_kualitas === 'Mutu Rendah' ? 'text-red-600' : 'text-green-600';
+      return `<span class="${color} font-semibold">${row.label_kualitas}</span>`;
+    },
+  },
+  {
+    key: 'label_tampilan',
+    label: 'Label Tampilan',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black',
+    cellClass: 'px-4 py-3 text-xs text-black',
+    render: (row: any) => `<span class="font-semibold">${row.label_tampilan}</span>`,
+  },
+];
+
+const wadahColumns = [
+  {
+    key: 'id_wadah',
+    label: 'ID Wadah',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-blue-800',
+  },
+  {
+    key: 'klaster',
+    label: 'Klaster',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-blue-800',
+    render: (row: WadahData) => {
+      const color = row.klaster.includes('besar') ? 'text-green-600' : 'text-blue-600';
+      return `<span class="${color} font-semibold">${row.klaster}</span>`;
+    }
+  },
+  {
+    key: 'kapasitas_max',
+    label: 'Kapasitas Maks (kg)',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-blue-800',
+  },
+  {
+    key: 'total_berat',
+    label: 'Total Berat (kg)',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300',
+    cellClass: 'px-4 py-3 text-xs text-black border-r border-blue-800',
+  },
+  {
+    key: 'status_penuh',
+    label: 'Status Penuh',
+    headerClass: 'px-4 py-3 text-left text-xs font-bold text-black',
+    cellClass: 'px-4 py-3 text-xs text-black',
+    render: (row: WadahData) => {
+      const color = row.status_penuh ? 'text-green-600' : 'text-gray-400';
+      const status = row.status_penuh ? 'Penuh' : 'Belum';
+      return `<span class="${color} font-semibold">${status}</span>`;
+    }
+  },
+];
+
+
+const handleRefresh = async () => {
+  try {
+    const response = await axios.get('/api/sensor/klaster');
+    allData.value = response.data;
+  } catch (error) {
+    toast.error("Gagal memuat data.");
+    console.error(error);
+  }
 };
+
 const handleExport = () => {
   alert("Export data functionality would be implemented here");
 };
@@ -132,102 +242,74 @@ const changePage = (page: number) => {
   }
 };
 
-// Pie chart data
-const pieData = {
-  labels: ['Besar', 'Kecil'],
-  datasets: [
-    {
-      data: [65, 35],
-      backgroundColor: ['#0056B3', '#66BFFF'],
-      borderWidth: 2,
-    },
-  ],
-}
-const pieOptions = {
-  responsive: true,
-  plugins: {
-    legend: { display: false },
-  },
-}
-
-// Table columns
-const clusterColumns = [
-  { key: 'id', label: 'ID', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300' },
-  { key: 'berat', label: 'Berat (gr)', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300' },
-  { 
-    key: 'klaster', label: 'Klaster', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300',
-    render: (row: ClusterData) => `<span class="${row.klaster === 'Kecil' ? 'text-blue-600 font-semibold' : 'text-green-600 font-semibold'}">${row.klaster}</span>`
-  },
-  { 
-    key: 'kualitas', label: 'Kualitas', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300',
-    render: (row: ClusterData) => `<span class="${row.kualitas === 'Bagus' ? 'text-blue-600 font-semibold' : 'text-red-600 font-semibold'}">${row.kualitas}</span>`
-  },
-  { key: 'waktu_masuk', label: 'Waktu Masuk', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-gray-300' },
-  { 
-    key: 'status_penuh', label: 'Status Penuh', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black', cellClass: 'px-4 py-3 text-xs text-black',
-    render: (row: ClusterData) => `<span class="${row.status_penuh ? 'text-green-600 font-semibold' : 'text-gray-400'}">${row.status_penuh ? 'Penuh' : 'Belum'}</span>`
-  },
-];
-const wadahColumns = [
-  { key: 'id_wadah', label: 'ID Wadah', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-blue-800' },
-  { 
-    key: 'klaster', label: 'Klaster', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-blue-800',
-    render: (row: WadahData) => `<span class="${row.klaster.includes('besar') ? 'text-green-600 font-semibold' : 'text-blue-600 font-semibold'}">${row.klaster}</span>`
-  },
-  { key: 'kapasitas_max', label: 'Kapasitas Maks (kg)', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-blue-800' },
-  { key: 'total_berat', label: 'Total Berat (kg)', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black border-r border-gray-300', cellClass: 'px-4 py-3 text-xs text-black border-r border-blue-800' },
-  { 
-    key: 'status_penuh', label: 'Status Penuh', headerClass: 'px-4 py-3 text-left text-xs font-bold text-black', cellClass: 'px-4 py-3 text-xs text-black',
-    render: (row: WadahData) => `<span class="${row.status_penuh ? 'text-green-600 font-semibold' : 'text-gray-400'}">${row.status_penuh ? 'Penuh' : 'Belum'}</span>`
-  },
-];
-
-// Kartu status wadah telur
-const batasBerat = 10; // misal 10 kg adalah batas wadah
-const wadahTelur = ref([
-  {
-    nama: 'Telur Besar - Baik',
-    jumlahTelur: 12,
-    totalBerat: 9.4,
-    isFull: false
-  },
-  {
-    nama: 'Telur Kecil - Baik',
-    jumlahTelur: 16,
-    totalBerat: 10.2,
-    isFull: true
-  }
-]);
-
-watch(wadahTelur, (val) => {
-  val.forEach((w) => {
-    w.isFull = w.totalBerat >= batasBerat;
-  });
-}, { deep: true });
-
-function resetWadah(index: number) {
-  wadahTelur.value[index].jumlahTelur = 0;
-  wadahTelur.value[index].totalBerat = 0;
-  wadahTelur.value[index].isFull = false;
-}
-
-const triggerWadahPenuh = async (wadah: WadahData) => {
+const klasterManualThreshold = async () => {
   try {
-    const response = await axios.post("/admin/trigger-wadah-penuh", {
-      klaster: wadah.klaster,
-      id_wadah: wadah.id_wadah,
-      total_berat: wadah.total_berat,
-      kapasitas_max: wadah.kapasitas_max
-    });
+    await axios.post('/admin/klasterisasi/threshold')
+    alert("Klasterisasi manual selesai!")
+    await loadData() // misalnya kamu refresh tabel
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      console.error("ERROR:", err.response?.data || err.message);
+    } else if (err instanceof Error) {
+      console.error("ERROR:", err.message);
+    } else {
+      console.error("Terjadi error yang tidak diketahui");
+    }
+    alert("Gagal melakukan klasterisasi manual");
+  }
+}
 
-    toast.success("Notifikasi berhasil dikirim!");
-    wadah.status_penuh = true;
-  } catch (error) {
-    toast.error("Gagal kirim notifikasi.");
+
+const klasterisasiManual = async () => {
+  try {
+    const res = await axios.post("/api/klasterisasi/manual");
+    toast.success(res.data.message || "Klasterisasi selesai");
+    await handleRefresh();
+    await fetchWadahTelur();
+  } catch (error: any) {
+    toast.error("Gagal klasterisasi data");
     console.error(error);
   }
 };
 
+const fetchWadahTelur = async () => {
+  try {
+    const res = await axios.get('/admin/wadah-status');
+    wadahTelur.value = res.data.map((item: WadahBackendResponse, index: number): WadahData => ({
+      id_wadah: index + 1,
+      klaster: item.nama,
+      jumlah_telur: item.jumlahTelur,
+      total_berat: item.totalBerat,
+      kapasitas_max: batasTelur,
+      status_penuh: item.jumlahTelur >= batasTelur,
+    }));
+  } catch (error) {
+    console.error('Gagal ambil data wadah:', error);
+  }
+};
+
+async function resetWadah(index: number) {
+  const target = wadahTelur.value[index];
+
+  try {
+    await axios.post(`/admin/reset-wadah/${target.klaster}`);
+    
+    // Perbarui ulang data setelah reset berhasil
+    await fetchWadahTelur();
+
+    toast.success(`Wadah ${target.klaster} berhasil direset.`);
+  } catch (error) {
+    toast.error(`Gagal reset wadah ${target.klaster}`);
+    console.error(error);
+  }
+}
+
+
+onMounted(() => {
+  handleRefresh();
+  fetchWadahTelur();
+  loadData();
+});
 </script>
 
 <template>
@@ -242,40 +324,52 @@ const triggerWadahPenuh = async (wadah: WadahData) => {
       <!-- Kartu Status Wadah Telur -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <div
-          v-for="(wadah, index) in wadahList"
+          v-for="(wadah, index) in wadahTelur"
           :key="index"
           :class="[
-            'p-6 rounded-2xl shadow border-2',
-            wadah.status_penuh ? 'border-red-500 bg-red-100' : 'border-blue-500 bg-white'
+            'p-6 rounded-2xl shadow-xl border-2 relative transition-all duration-300',
+            wadah.status_penuh ? 'border-red-500 bg-red-50' : 'border-blue-500 bg-white'
           ]"
         >
-          <h2 class="text-lg font-bold mb-4 text-black">{{ wadah.klaster.replace('-', ' ').toUpperCase() }}</h2>
-          <div class="mb-2 text-sm text-black">
+          <!-- Badge Status -->
+          <div
+            class="absolute top-3 right-3 px-3 py-1 text-xs font-semibold rounded-full"
+            :class="wadah.status_penuh ? 'bg-red-500 text-white' : 'bg-green-500 text-white'"
+          >
+            {{ wadah.status_penuh ? 'PENUH' : 'TERSEDIA' }}
+          </div>
+
+          <!-- Nama Klaster -->
+          <h2 v-if="wadah.klaster" class="text-xl font-bold mb-4 text-blue-800 font-poppins tracking-wide uppercase">
+            {{ wadah.klaster.replace('-', ' ') }}
+          </h2>
+
+          <!-- ID Wadah -->
+          <div class="mb-2 text-sm text-gray-700">
             <span class="font-medium">ID Wadah:</span> {{ wadah.id_wadah }}
           </div>
-          <div class="mb-2 text-sm text-black">
-            <span class="font-medium">Kapasitas Maks:</span> {{ wadah.kapasitas_max }} kg
+
+          <!-- Kapasitas Maks -->
+          <div class="mb-2 text-sm text-gray-700">
+            <span class="font-medium">Kapasitas Maks:</span> {{ wadah.kapasitas_max }} butir
           </div>
-          <div class="mb-2 text-sm text-black">
+
+          <!-- Jumlah Telur -->
+          <div class="mb-2 text-sm text-gray-700">
+            <span class="font-medium">Jumlah Telur:</span> {{ wadah.jumlah_telur }} / 5 butir
+          </div>
+
+          <!-- Total Berat -->
+          <div class="mb-4 text-sm text-gray-700">
             <span class="font-medium">Total Berat:</span> {{ wadah.total_berat.toFixed(2) }} kg
           </div>
-          <div class="mb-4 text-sm text-black">
-            <span class="font-medium">Status:</span>
-            <span :class="wadah.status_penuh ? 'text-red-600 font-semibold' : 'text-green-600'">
-              {{ wadah.status_penuh ? 'Penuh' : 'Belum Penuh' }}
-            </span>
-          </div>
+
+          <!-- Tombol Reset -->
           <button
-            @click="() => { wadah.total_berat = 0; wadah.status_penuh = false; }"
-            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+            @click="resetWadah(index)"
+            class="w-full mb-2 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold transition"
           >
-            Reset
-          </button>
-          <button
-            @click="triggerWadahPenuh(wadah)"
-            class="mt-4 ml-16 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-          >
-            Uji Kirim Notifikasi Wadah
+            Reset Wadah
           </button>
         </div>
       </div>
@@ -301,13 +395,29 @@ const triggerWadahPenuh = async (wadah: WadahData) => {
           />
           <!-- Refresh Button -->
           <button
-            @click="handleRefresh"
+            @click="klasterisasiManual"
             class="px-3 py-2 bg-blue-500 text-white text-sm font-semibold rounded font-inter hover:bg-blue-600 flex items-center gap-2 w-[140px] justify-center transition-colors duration-200"
           >
-            <span>Refresh Data</span>
+            <span>Klasterisasi</span>
             <svg class="w-4 h-4 stroke-2" fill="none" viewBox="0 0 17 17">
               <path
                 d="M16 8.5C16 6.51088 15.2098 4.60322 13.8033 3.1967C12.3968 1.79018 10.4891 1 8.5 1C6.40329 1.00789 4.39081 1.82602 2.88333 3.28333L1 5.16667M1 5.16667V1M1 5.16667H5.16667M1 8.5C1 10.4891 1.79018 12.3968 3.1967 13.8033C4.60322 15.2098 6.51088 16 8.5 16C10.5967 15.9921 12.6092 15.174 14.1167 13.7167L16 11.8333M16 11.8333H11.8333M16 11.8333V16"
+                stroke="white"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <!-- Klaster Manual (tombol baru) -->
+          <button
+            @click="klasterManualThreshold"
+            class="px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded font-inter hover:bg-green-700 flex items-center gap-2 w-[140px] justify-center transition-colors duration-200"
+          >
+            <span>Klaster Manual</span>
+            <svg class="w-4 h-4 stroke-2" fill="none" viewBox="0 0 16 16">
+              <path
+                d="M2 4H14M2 8H14M2 12H14"
                 stroke="white"
                 stroke-width="2"
                 stroke-linecap="round"
@@ -379,21 +489,6 @@ const triggerWadahPenuh = async (wadah: WadahData) => {
               Selanjutnya
               </button>
           </div>
-        </div>
-      </div>
-
-      <!-- Wadah Data Table Section -->
-      <div class="bg-white rounded-2xl border border-blue-700 p-6 mt-8">
-        <div class="mb-6">
-          <h2 class="text-lg lg:text-xl font-bold text-gray-900 font-poppins mb-2">
-            Tabel Data Wadah
-          </h2>
-          <p class="text-xs font-bold text-gray-900 font-poppins">
-            Data status wadah berdasarkan klaster dan kapasitas
-          </p>
-        </div>
-        <div class="overflow-x-auto border border-blue-800 shadow-lg rounded-xl">
-          <Table :columns="wadahColumns" :rows="wadahList" />
         </div>
       </div>
     </div>

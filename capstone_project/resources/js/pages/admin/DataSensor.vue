@@ -6,21 +6,20 @@ import DropdownFilter from '@/components/DropdownFilter.vue';
 import Table from '@/components/Table.vue';
 import { RefreshCcw, FileDown } from 'lucide-vue-next';
 import { useToast, POSITION } from "vue-toastification"
-import api from "@/lib/axios";
+import dayjs from 'dayjs'
 import axios from "axios";
 
 // Toast configuration
 const toast = useToast()
 
-// TypeScript interfaces
 interface SensorData {
   id: number;
   no: number;
-  sensorName: string;
-  value: string;
-  status: "Normal" | "Warning" | "Critical";
-  lastUpdate: string;
+  berat: number;
+  intensitas: number;
+  dibuat_pada: string;
 }
+
 interface FilterOption {
   value: string;
   label: string;
@@ -48,6 +47,35 @@ const itemsPerPage = ref(10);
 const notifikasiLogs = ref<NotifikasiLog[]>([]);
 const isLoadingNotif = ref(false);
 
+const filteredData = computed(() => {
+  if (!selectedFilter.value) return allData.value;
+
+  const now = dayjs();
+
+  // Debug: tampilkan format tanggal setiap item
+  console.log('🔍 Filter:', selectedFilter.value);
+  allData.value.forEach(item => {
+    console.log(`ID: ${item.id} | Dibuat pada: ${item.dibuat_pada} | Parsed: ${dayjs(item.dibuat_pada).format()}`);
+  });
+
+  return allData.value.filter(item => {
+    const itemDate = dayjs(item.dibuat_pada);
+
+    switch (selectedFilter.value) {
+      case "today":
+        return itemDate.isSame(now, 'day');
+      case "yesterday":
+        return itemDate.isSame(now.subtract(1, 'day'), 'day');
+      case "week":
+        return itemDate.isAfter(now.subtract(7, 'day'));
+      case "month":
+        return itemDate.isAfter(now.subtract(30, 'day'));
+      default:
+        return true;
+    }
+  });
+});
+
 // Filter functionality
 const filterOptions: FilterOption[] = [
   { label: 'Hari Ini', value: 'today' },
@@ -57,38 +85,22 @@ const filterOptions: FilterOption[] = [
 ];
 const selectedFilter = ref('');
 
-// Generate mock data
-const generateMockData = (): SensorData[] => {
-  const data: SensorData[] = [];
-  const values = [
-    "1.25", "1.23", "1.20", "1.15", "1.10",
-    "1.08", "1.05", "1.02", "1.00", "0.98"
-  ];
-  const statuses: ("Normal" | "Warning")[] = [
-    "Normal", "Normal", "Warning", "Normal", "Normal",
-    "Normal", "Warning", "Normal", "Normal", "Normal"
-  ];
-  const times = [
-    "2025-05-26 11:40 WIB", "2025-05-26 11:35 WIB", "2025-05-26 11:30 WIB",
-    "2025-05-26 11:25 WIB", "2025-05-26 11:20 WIB", "2025-05-26 11:15 WIB",
-    "2025-05-26 11:10 WIB", "2025-05-26 11:05 WIB", "2025-05-26 11:00 WIB", "2025-05-26 10:55 WIB"
-  ];
-
-  for (let i = 0; i < 100; i++) {
-    data.push({
-      id: i + 1,
-      no: i + 1,
-      sensorName: "Load Cell #1",
-      value: `${values[i % 10]} kg`,
-      status: statuses[i % 10],
-      lastUpdate: times[i % 10],
-    });
+const fetchSensorData = async () => {
+  try {
+    const res = await axios.get('/api/sensor-data');
+    allData.value = res.data.data.map((item: any, index: number) => ({
+      id: item.id,
+      no: index + 1,
+      berat: item.berat,
+      intensitas: item.intensitas,
+      dibuat_pada: item.dibuat_pada,
+    }));
+  } catch (error) {
+    console.error("Gagal mengambil data sensor:", error);
+    toast.error("Gagal mengambil data sensor");
   }
-  return data;
 };
 
-// Initialize data
-allData.value = generateMockData();
 
 // Computed for pagination
 const totalItems = computed(() => allData.value.length);
@@ -96,16 +108,6 @@ const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage.valu
 const startItem = computed(() => (currentPage.value - 1) * itemsPerPage.value + 1);
 const endItem = computed(() => Math.min(currentPage.value * itemsPerPage.value, totalItems.value));
 
-// Filtered & paginated data
-const filteredData = computed(() => {
-  if (!selectedFilter.value) return allData.value;
-  // contoh filter, sesuaikan dengan kebutuhan
-  return allData.value.filter(item => {
-    // filter sesuai value, misal berdasarkan tanggal
-    // return true jika cocok
-    return true;
-  });
-});
 const currentData = computed(() => {
   const startIndex = (currentPage.value - 1) * itemsPerPage.value;
   const endIndex = startIndex + itemsPerPage.value;
@@ -114,17 +116,42 @@ const currentData = computed(() => {
 
 // Refresh Tabel
 const isRefreshing = ref(false);
-const refreshData = () => {
+const refreshData = async () => {
   isRefreshing.value = true;
-  setTimeout(() => {
+  try {
+    await fetchSensorData(); // pastikan ini adalah fungsi ambil data dari backend
+    toast.success("Data berhasil diperbarui!");
+  } catch (error) {
+    toast.error("Gagal memperbarui data!");
+  } finally {
     isRefreshing.value = false;
-    alert('Data refreshed!');
-  }, 1000);
+  }
 };
 
+
 const exportData = () => {
-  alert('Export data functionality would be implemented here');
+  const rows = allData.value;
+  if (rows.length === 0) {
+    toast.warning("Tidak ada data untuk diekspor");
+    return;
+  }
+
+  const headers = ["No", "Berat", "Intensitas", "Status", "Waktu"];
+  const csvContent = [
+    headers.join(","),
+    ...rows.map(row => `${row.no},${row.berat},${row.intensitas},${row.dibuat_pada}`)
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `data_sensor_${new Date().toISOString()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
+
 
 const getStatusColor = (status: string): string => {
   switch (status.toLowerCase()) {
@@ -144,11 +171,17 @@ watch(selectedFilter, () => {
 
 const columns = [
   { key: 'no', label: 'No', headerClass: 'w-16 px-3 py-3 border-r border-gray-300', cellClass: 'w-16 px-3 py-3 border-r border-gray-300' },
-  { key: 'sensorName', label: 'Nama Sensor', headerClass: 'flex-1 px-3 py-3 border-r border-gray-300', cellClass: 'flex-1 px-3 py-3 border-r border-gray-300' },
-  { key: 'value', label: 'Nilai', headerClass: 'flex-1 px-3 py-3 border-r border-gray-300', cellClass: 'flex-1 px-3 py-3 border-r border-gray-300' },
-  { key: 'status', label: 'Status', headerClass: 'flex-1 px-3 py-3 border-r border-gray-300', cellClass: 'flex-1 px-3 py-3 border-r border-gray-300', render: (row: SensorData) => row.status },
-  { key: 'lastUpdate', label: 'Waktu Update', headerClass: 'w-44 px-3 py-3', cellClass: 'w-44 px-3 py-3' },
+  { key: 'berat', label: 'Berat (gram)', headerClass: 'px-3 py-3 border-r border-gray-300', cellClass: 'px-3 py-3 border-r border-gray-300' },
+  { key: 'intensitas', label: 'Intensitas (lux)', headerClass: 'px-3 py-3 border-r border-gray-300', cellClass: 'px-3 py-3 border-r border-gray-300' },
+  {
+    key: 'dibuat_pada',
+    label: 'Data Masuk',
+    headerClass: 'px-3 py-3',
+    cellClass: 'px-3 py-3',
+    render: (row: SensorData) => new Date(row.dibuat_pada).toLocaleString('id-ID')
+  },
 ];
+
 
 const notifColumns = [
   { key: 'judul', label: 'Judul', headerClass: 'px-3 py-3', cellClass: 'px-3 py-3 font-semibold' },
@@ -190,8 +223,10 @@ const fetchNotifikasiLogs = async () => {
 
 // Panggil saat halaman dimount
 onMounted(() => {
-  fetchNotifikasiLogs();
+  fetchSensorData();
+  fetchNotifikasiLogs(); // tetap panggil juga notifikasi
 });
+
 
 // Pagination for Notifikasi Logs
 const notifCurrentPage = ref(1);
@@ -205,6 +240,55 @@ const paginatedNotifikasiLogs = computed(() => {
   const endIndex = startIndex + notifItemsPerPage.value;
   return notifikasiLogs.value.slice(startIndex, endIndex);
 });
+
+const showModal = ref(false)
+
+const form = ref({
+  berat: '',
+  intensitas: ''
+})
+
+const submitManualData = async () => {
+  const beratNum = parseFloat(form.value.berat);
+  const intensitasNum = parseFloat(form.value.intensitas);
+
+  // Validasi input
+  if (isNaN(beratNum) || beratNum <= 0) {
+    toast.error('❌ Berat harus berupa angka yang valid');
+    return;
+  }
+
+  if (isNaN(intensitasNum) || intensitasNum <= 0) {
+    toast.error('❌ Intensitas harus berupa angka yang valid');
+    return;
+  }
+
+  try {
+    await axios.post('/admin/manual-input', {
+      berat: beratNum,
+      intensitas: intensitasNum,
+    });
+
+    toast.success('✅ Data berhasil ditambahkan dan diklasterisasi');
+    showModal.value = false;
+
+    // Reset form
+    form.value = {
+      berat: '',
+      intensitas: ''
+    };
+
+  } catch (err: any) {
+    if (err.response && err.response.data?.message?.includes('Wadah penuh')) {
+      toast.warning('⚠️ Wadah penuh. Data tidak disimpan!');
+    } else {
+      toast.error('❌ Gagal mengirim data');
+    }
+  }
+};
+
+
+
 </script>
 
 
@@ -231,6 +315,15 @@ const paginatedNotifikasiLogs = computed(() => {
             :options="filterOptions"
             class="w-[140px]"
           />
+
+          <!-- 🔽 Tombol Input Manual -->
+          <button 
+            @click="showModal = true"
+            class="px-3 py-2 bg-blue-500 text-white text-sm font-semibold rounded font-inter hover:bg-blue-600 flex items-center gap-2"
+          >
+            Input Manual
+          </button>
+
           <button 
             @click="refreshData"
             :disabled="isRefreshing"
@@ -241,6 +334,7 @@ const paginatedNotifikasiLogs = computed(() => {
               <RefreshCcw class="w-4 h-4" />
             </span>
           </button>
+
           <button 
             @click="exportData"
             class="px-3 py-2 bg-blue-800 text-white text-sm font-semibold rounded font-inter hover:bg-blue-900 flex items-center gap-2"
@@ -248,6 +342,77 @@ const paginatedNotifikasiLogs = computed(() => {
             Ekspor Data
             <FileDown class="w-3 h-4" />
           </button>
+        </div>
+
+         <!-- Modal Input Manual -->
+        <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm transition-all">
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 border border-blue-200 relative animate-fadeIn">
+            
+            <!-- Header Icon -->
+            <div class="flex justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 20l9-5-9-5-9 5 9 5z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 12l9-5-9-5-9 5 9 5z" />
+              </svg>
+            </div>
+
+            <!-- Judul -->
+            <h3 class="font-bold text-2xl mb-2 text-blue-700 text-center font-poppins">Input Manual</h3>
+            <p class="mb-6 text-gray-600 text-center text-sm">Silakan isi data berat dan intensitas secara manual.</p>
+
+            <!-- Form -->
+            <form @submit.prevent="submitManualData" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Berat (gram)</label>
+                <input 
+                  v-model.number="form.berat"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  class="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Intensitas (lux)</label>
+                <input 
+                  v-model.number="form.intensitas"
+                  type="number"
+                  step="0.01"
+                  required
+                  class="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
+
+              <!-- Tombol Aksi -->
+              <div class="flex justify-end gap-3 pt-2">
+                <button 
+                  type="button"
+                  @click="showModal = false"
+                  class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition font-semibold"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit"
+                  class="px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow transition"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+
+            <!-- Tombol Close (pojok kanan atas) -->
+            <button
+              class="absolute top-3 right-3 text-gray-400 hover:text-blue-600 transition"
+              @click="showModal = false"
+              aria-label="Tutup"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M6 6l12 12M6 18L18 6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <!-- Data Table -->
@@ -296,4 +461,20 @@ const paginatedNotifikasiLogs = computed(() => {
   opacity: 1;
   transform: translateY(0);
 }
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-card {
+  animation: fadeInUp 0.4s ease-out;
+}
+
 </style>

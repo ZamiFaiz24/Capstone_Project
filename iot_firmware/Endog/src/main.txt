@@ -54,8 +54,8 @@ void setup() {
   // Inisialisasi HX711
   scale.begin(HX711_DOUT, HX711_SCK);
   delay(1000);
-  scale.set_scale(-1029.95); // Ganti dengan hasil kalibrasi Anda
-  scale.tare();
+  scale.set_scale(); // kosongkan scale dulu
+  scale.tare();      // nolkan beban
 
   // Inisialisasi Servo
   myservo1.attach(SERVO1_PIN);
@@ -111,7 +111,7 @@ void loop() {
       myservo2.write(0); // kembali ke posisi awal
     } else {
       Serial.println("Telur Bagus Kecil → Servo2 ke 180");
-      myservo2.write(180);
+      myservo2.write(90);
       delay(500);
       myservo2.write(0); // kembali ke posisi awal
     }

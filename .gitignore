@@ -1,0 +1,41 @@
+# Ignore Python virtual environment
+venv/
+
+# Ignore Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore model files (biasanya besar)
+*.keras
+*.pkl
+*.h5
+*.pt
+*.onnx
+
+# Ignore data output jika bisa di-regenerate
+*.csv
+*.xlsx
+
+# Ignore log, temporary, dan test files
+*.log
+*.tmp
+*.bak
+*.swp
+test_model.txt
+
+# Node modules
+**/node_modules/
+
+# Laravel vendor dependencies
+/vendor
+
+# Laravel environment file
+.env
+
+# OS-specific
+.DS_Store
+Thumbs.db

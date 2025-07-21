@@ -16,7 +16,7 @@ const form = useForm({
 })
 
 const updateField = (field) => {
-  form.put(route('admin.profile.update'), {
+  form.put(route('user.profile.update'), {
     preserveScroll: true,
     onSuccess: () => {
       editField.value = null
@@ -128,7 +128,7 @@ const updateField = (field) => {
         <!-- UBAH PASSWORD -->
         <div class="pt-3">
           <button
-            @click="$inertia.visit('/admin/reset-password')"
+            @click="$inertia.visit('/user/reset-password')"
             class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-blue-700 rounded font-semibold border border-blue-300 transition"
           >
             <Lock class="w-4 h-4" /> Ubah Password

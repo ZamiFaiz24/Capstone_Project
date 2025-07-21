@@ -1,25 +1,35 @@
 <script setup>
 import { ref } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { useForm, router } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Save, Eye, EyeOff } from 'lucide-vue-next'
 
 const form = useForm({
   current_password: '',
-  new_password: '',
-  new_password_confirmation: '',
+  password: '',
+  password_confirmation: '',
 })
+
+const props = defineProps({
+  role: String
+})
+
 
 const showCurrent = ref(false)
 const showNew = ref(false)
 const showConfirm = ref(false)
 
 const submit = () => {
-  form.put(route('password.update'), {
-    preserveScroll: true,
-    onSuccess: () => form.reset(),
+  form.put(route(`${props.role}.password.update`), {
+    onSuccess: () => {
+      router.visit(route(`${props.role}.profile.edit`))
+    },
+    onError: (errors) => {
+      console.error(errors)
+    },
   })
 }
+
 </script>
 
 <template>
@@ -60,7 +70,7 @@ const submit = () => {
           <label class="block font-medium mb-1 text-gray-700">Password Baru</label>
           <div class="relative">
             <input
-              v-model="form.new_password"
+              v-model="form.password"
               :type="showNew ? 'text' : 'password'"
               autocomplete="new-password"
               class="input pr-10 text-black"
@@ -75,8 +85,8 @@ const submit = () => {
               <component :is="showNew ? Eye : EyeOff" class="w-5 h-5" />
             </button>
           </div>
-          <div v-if="form.errors.new_password" class="text-red-500 text-sm mt-1">
-            {{ form.errors.new_password }}
+          <div v-if="form.errors.password" class="text-red-500 text-sm mt-1">
+            {{ form.errors.password }}
           </div>
         </div>
 
@@ -85,7 +95,7 @@ const submit = () => {
           <label class="block font-medium mb-1 text-gray-700">Konfirmasi Password Baru</label>
           <div class="relative">
             <input
-              v-model="form.new_password_confirmation"
+              v-model="form.password_confirmation"
               :type="showConfirm ? 'text' : 'password'"
               autocomplete="new-password"
               class="input pr-10 text-black"

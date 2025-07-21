@@ -1,50 +1,71 @@
 <script setup lang="ts">
 import { Bar } from 'vue-chartjs'
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
-import { computed, defineProps } from 'vue'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Tooltip,
+  Title,
+  Legend
+} from 'chart.js'
+import type { ChartOptions, ChartData } from 'chart.js'
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
+// Registrasi komponen Chart.js
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
+// Props dari parent
 const props = defineProps<{
-  chartData: { kecil: number; besar: number }[]
+  chartData: ChartData<'bar'>
 }>()
 
-const barData = computed(() => ({
-  labels: props.chartData.map((_, i) => `#${i + 1}`),
-  datasets: [
-    {
-      label: 'Kecil',
-      backgroundColor: '#38bdf8',
-      data: props.chartData.map(d => d.kecil),
-    },
-    {
-      label: 'Besar',
-      backgroundColor: '#1e40af',
-      data: props.chartData.map(d => d.besar),
-    },
-  ],
-}))
-
-const barOptions = {
+// Opsi chart
+const barOptions: ChartOptions<'bar'> = {
   responsive: true,
+  maintainAspectRatio: false,
   plugins: {
-    legend: { display: true },
+    legend: {
+      position: 'top',
+      labels: {
+        font: {
+          size: 12,
+          family: 'Poppins'
+        }
+      }
+    },
+    title: {
+      display: false
+    }
   },
   scales: {
+    x: {
+      grid: {
+        display: false
+      },
+      ticks: {
+        font: {
+          size: 12,
+          family: 'Poppins'
+        }
+      }
+    },
     y: {
       beginAtZero: true,
-      max: 600,
-      ticks: { stepSize: 100 },
-    },
-  },
+      ticks: {
+        font: {
+          size: 12,
+          family: 'Poppins'
+        }
+      },
+      grid: {
+        color: (ctx) => ctx.tick.value === 0 ? 'transparent' : '#f0f0f0'
+      }
+    }
+  }
 }
+
 </script>
 
 <template>
-  <div class="h-80 bg-white rounded-[15px] border border-gray-300 border-opacity-30 shadow-lg p-6 flex flex-col">
-    <h2 class="text-xl font-semibold text-gray-800 font-poppins mb-2">
-      Grafik Jumlah Telur Berdasarkan Klaster
-    </h2>
-    <Bar :data="barData" :options="barOptions" class="flex-1" />
-  </div>
+  <Bar :data="chartData" :options="barOptions" />
 </template>

@@ -1,0 +1,166 @@
+1. Model A
+input_dim = X_scaled.shape[1]
+encoding_dim = 4  
+
+input_layer = Input(shape=(input_dim,))
+encoded = Dense(64, activation='relu')(input_layer)
+encoded = Dense(32, activation='relu')(encoded)
+encoded = Dense(16, activation='relu')(encoded)
+encoded = Dense(encoding_dim, activation='linear')(encoded)
+
+decoded = Dense(16, activation='relu')(encoded)
+decoded = Dense(32, activation='relu')(decoded)
+decoded = Dense(64, activation='relu')(decoded)
+decoded = Dense(input_dim, activation='sigmoid')(decoded)
+
+autoencoder = Model(inputs=input_layer, outputs=decoded)
+encoder = Model(inputs=input_layer, outputs=encoded)
+
+autoencoder.compile(optimizer=Adam(learning_rate=0.005), loss='mse')
+
+from tensorflow.keras.callbacks import EarlyStopping
+early_stop = EarlyStopping(monitor='loss', patience=20, restore_best_weights=True)
+
+history = autoencoder.fit(
+    X_scaled, X_scaled,
+    epochs=300,
+    batch_size=4,
+    callbacks=[early_stop],
+    verbose=0
+)
+
+# Mendapatkan epoch terbaik (terakhir sebelum early stopping)
+best_epoch = len(history.history['loss']) - 1
+best_loss = history.history['loss'][best_epoch]
+
+print(f"Model berhenti di epoch ke-{best_epoch} dengan nilai loss: {best_loss:.8f}")
+
+Model berhenti di epoch ke-61 dengan nilai loss: 0.00029729
+
+X_latent [[ 0.15031518  0.47323418 -0.31170103  0.81592524]
+ [-0.6053022   1.7893263  -1.0678458   2.2382627 ]
+ [-1.326913   -0.3911584   0.9891265  -0.2850429 ]
+ [ 0.76697093  1.231035   -0.49487644  1.0229338 ]
+ [-1.0445887   0.91961455 -0.5043265   1.6324849 ]
+ [-0.19556047  0.9031427  -0.5662379   1.3458536 ]
+ [ 0.47461575  1.564498   -0.7936073   1.5221405 ]
+ [-1.8295734  -0.3095416   0.9339269   0.04513513]
+ [-1.2594193   1.4808935  -0.8255703   2.153304  ]
+ [-1.4057231   0.32462472 -0.04975641  1.1570015 ]]
+
+
+Silhouette Score: 0.3676694
+13/13 ━━━━━━━━━━━━━━━━━━━━ 0s 9ms/step
+Reconstruction MSE: 0.00015568042685807558
+
+
+2. Model B
+input_dim = X_scaled.shape[1]
+encoding_dim = 4  
+
+input_layer = Input(shape=(input_dim,))
+encoded = Dense(32, activation='relu')(input_layer)
+encoded = Dense(32, activation='relu')(encoded)
+encoded = Dense(16, activation='relu')(encoded)
+encoded = Dense(encoding_dim, activation='linear')(encoded)
+
+decoded = Dense(16, activation='relu')(encoded)
+decoded = Dense(32, activation='relu')(decoded)
+decoded = Dense(32, activation='relu')(decoded)
+decoded = Dense(input_dim, activation='sigmoid')(decoded)
+
+autoencoder = Model(inputs=input_layer, outputs=decoded)
+encoder = Model(inputs=input_layer, outputs=encoded)
+
+autoencoder.compile(optimizer=Adam(learning_rate=0.005), loss='mse')
+
+from tensorflow.keras.callbacks import EarlyStopping
+early_stop = EarlyStopping(monitor='loss', patience=20, restore_best_weights=True)
+
+history = autoencoder.fit(
+    X_scaled, X_scaled,
+    epochs=300,
+    batch_size=4,
+    callbacks=[early_stop],
+    verbose=0
+)
+
+# Mendapatkan epoch terbaik (terakhir sebelum early stopping)
+best_epoch = len(history.history['loss']) - 1
+best_loss = history.history['loss'][best_epoch]
+
+print(f"Model berhenti di epoch ke-{best_epoch} dengan nilai loss: {best_loss:.8f}")
+
+Model berhenti di epoch ke-45 dengan nilai loss: 0.00040044
+
+X_latent [[ 0.43112367 -0.4015106   0.13276386  0.3300516 ]
+ [ 0.7133695  -0.8488385   0.13046442  1.1737064 ]
+ [ 0.8272015  -1.447823   -0.09672359 -0.8571971 ]
+ [ 0.28657964  0.065621    0.15535735  0.77643937]
+ [ 0.77125454 -1.0857816   0.09988709  0.6023711 ]
+ [ 0.5534029  -0.62228966  0.12901948  0.5920743 ]
+ [ 0.40377173 -0.1318833   0.14171048  1.0182595 ]
+ [ 0.9732008  -1.626639   -0.10349448 -0.64057964]
+ [ 0.85918635 -1.2480168   0.10573353  0.977403  ]
+ [ 0.8507695  -1.2322334   0.02209385  0.23245099]]
+
+
+Silhouette Score: 0.38445824
+13/13 ━━━━━━━━━━━━━━━━━━━━ 0s 13ms/step
+Reconstruction MSE: 0.00014101154752200402
+
+3. Model C
+
+input_dim = X_scaled.shape[1]
+encoding_dim = 4  
+
+input_layer = Input(shape=(input_dim,))
+encoded = Dense(16, activation='relu')(input_layer)
+encoded = Dense(32, activation='relu')(encoded)
+encoded = Dense(8, activation='relu')(encoded)
+encoded = Dense(encoding_dim, activation='linear')(encoded)
+
+decoded = Dense(8, activation='relu')(encoded)
+decoded = Dense(32, activation='relu')(decoded)
+decoded = Dense(16, activation='relu')(decoded)
+decoded = Dense(input_dim, activation='sigmoid')(decoded)
+
+autoencoder = Model(inputs=input_layer, outputs=decoded)
+encoder = Model(inputs=input_layer, outputs=encoded)
+
+autoencoder.compile(optimizer=Adam(learning_rate=0.005), loss='mse')
+
+from tensorflow.keras.callbacks import EarlyStopping
+early_stop = EarlyStopping(monitor='loss', patience=20, restore_best_weights=True)
+
+history = autoencoder.fit(
+    X_scaled, X_scaled,
+    epochs=300,
+    batch_size=4,
+    callbacks=[early_stop],
+    verbose=0
+)
+
+# Mendapatkan epoch terbaik (terakhir sebelum early stopping)
+best_epoch = len(history.history['loss']) - 1
+best_loss = history.history['loss'][best_epoch]
+
+print(f"Model berhenti di epoch ke-{best_epoch} dengan nilai loss: {best_loss:.8f}")
+
+Model berhenti di epoch ke-91 dengan nilai loss: 0.00047687
+
+X_latent [[ 0.29122198 -0.07470688 -0.518765    0.5030883 ]
+ [ 0.98223865 -0.6614181  -1.4171064   0.87400204]
+ [-0.866077    0.9294286   0.51922077  1.7861644 ]
+ [ 0.6629807  -0.38428566 -0.86646014 -0.0785924 ]
+ [ 0.510951   -0.26410034 -0.92548233  1.2835125 ]
+ [ 0.51289344 -0.26134637 -0.8210833   0.69882363]
+ [ 0.86758804 -0.55862176 -1.1426915   0.10228139]
+ [-0.6018415   0.695671    0.1912892   1.9714016 ]
+ [ 0.7980836  -0.51195014 -1.28486     1.3915313 ]
+ [ 0.17941451  0.02045742 -0.5808296   1.5341533 ]]
+
+Silhouette Score: 0.3905825
+13/13 ━━━━━━━━━━━━━━━━━━━━ 0s 9ms/step
+Reconstruction MSE: 7.113580879865865e-05
+

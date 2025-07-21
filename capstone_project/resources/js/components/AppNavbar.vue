@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { User, Bell, LogOut } from 'lucide-vue-next'
 import { usePage, router } from '@inertiajs/vue3'
 import axios from 'axios'
+import type { User as AuthUser } from '@/types'
 
 const page = usePage()
-const user = page.props.auth.user
+const user = page.props.auth.user as AuthUser
 const showNotif = ref(false)
 const notifDropdownRef = ref<HTMLElement | null>(null)
 const notifikasi = ref<Notifikasi[]>([])
@@ -19,6 +20,7 @@ interface Notifikasi {
   sudah_dibaca: number
   tautan: string
 }
+
 
 defineProps<{ isSidebarOpen: boolean }>()
 const showDropdown = ref(false)
@@ -114,6 +116,19 @@ watch(showNotif, (isOpen) => {
     startPolling()
   }
 })
+
+const isAdmin = computed(() => {
+  return user?.role === 'admin' // sesuaikan nama field 'role' dengan yang kamu gunakan di tabel user
+})
+
+const goToProfile = () => {
+  router.visit(isAdmin.value ? '/admin/profile' : '/user/profile')
+}
+
+const goToNotifikasi = () => {
+  router.visit(isAdmin.value ? '/admin/data_sensor' : '/user/data_sensor')
+}
+
 
 
 // Tutup notifikasi jika klik di luar
@@ -221,7 +236,7 @@ onBeforeUnmount(() => {
               </button>
               <div
                 class="text-xs text-blue-600 hover:underline cursor-pointer ml-auto font-semibold"
-                @click="router.visit('/admin/data_sensor')"
+                @click="goToNotifikasi"
               >
                 Lihat semua notifikasi
               </div>
@@ -247,12 +262,12 @@ onBeforeUnmount(() => {
               <div class="font-semibold text-gray-800">{{ user.name }}</div>
               <div class="text-gray-500 text-xs">{{ user.email }}</div>
             </div>
-            <button
-              @click="router.visit('/admin/profile')"
-              class="w-full flex items-center gap-2 px-4 py-3 hover:bg-blue-50 text-blue-600"
-            >
-              <User class="w-4 h-4" /> Profil
-            </button>
+              <button
+                @click="goToProfile"
+                class="w-full flex items-center gap-2 px-4 py-3 hover:bg-blue-50 text-blue-600"
+              >
+                <User class="w-4 h-4" /> Profil
+              </button>
             <button
               @click.prevent="handleLogout"
               class="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-50 text-red-600"

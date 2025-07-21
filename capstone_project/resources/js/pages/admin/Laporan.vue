@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from "vue";
+import { ref, onMounted, computed, watch, nextTick } from "vue";
 import { useForm } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import DropdownFilter from "@/components/DropdownFilter.vue";
@@ -7,8 +7,11 @@ import Table from "@/components/Table.vue";
 import Pagination from "@/components/Pagination.vue";
 import ExportModal from '@/components/ExportModal.vue'
 import { RefreshCcw, FileDown, ChevronUp, ChevronDown, Minus } from 'lucide-vue-next';
+import Swal, { SweetAlertIcon } from 'sweetalert2';
 import { useToast, POSITION } from "vue-toastification"
-import * as XLSX from "xlsx"
+import * as XLSX from "xlsx";
+import { saveAs } from 'file-saver';
+import axios from 'axios';
 
 const toast = useToast()
 
@@ -34,6 +37,34 @@ const hargaList = computed(() => {
     .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
     .map((item, index) => ({ ...item, no: index + 1 }))
 })
+
+const produksi = ref({
+  rata: 0,
+  tertinggi: 0,
+  tanggal_tertinggi: '',
+  terendah: 0,
+  tanggal_terendah: '',
+  total:0
+});
+
+const harga = ref({
+  sekarang: 0,
+  kemarin: 0,
+  tertinggi: 0,
+  tanggal_tertinggi: '',
+  terendah: 0,
+  tanggal_terendah: '',
+  status: '', // naik / turun / stabil
+  selisih: 0 // persen
+})
+
+const pendapatan = ref({
+  total: 0,
+  tertinggi: 0,
+  tanggal_tertinggi: '',
+  terendah: 0,
+  tanggal_terendah: ''
+});
 
 const paginatedData = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
@@ -78,20 +109,34 @@ const selectedFilter = ref("");
 // Dropdown filter
 const filterOptions: FilterOption[] = [
   { label: "Hari Ini", value: "today" },
-  { label: "Kemarin", value: "yesterday" },
   { label: "Seminggu", value: "week" },
   { label: "Sebulan", value: "month" },
 ];
 
-// Refresh Tabel
-const isRefreshing = ref(false);
-const refreshData = () => {
-  isRefreshing.value = true;
-  setTimeout(() => {
-    isRefreshing.value = false;
-    alert('Data refreshed!');
-  }, 1000);
-};
+const isRefreshing = ref(false)
+
+const refreshData = async () => {
+  isRefreshing.value = true
+
+  try {
+    await ambilHarga() // fungsi ambil ulang data harga dari API
+    // Tambahkan juga ambilDataLain() jika perlu
+
+    toast.success('Data laporan & tabel berhasil diperbarui!', {
+      position: POSITION.TOP_CENTER
+    })
+  } catch (err) {
+    toast.error('Gagal memperbarui data.', {
+      position: POSITION.TOP_CENTER
+    })
+    console.error(err)
+  } finally {
+    setTimeout(() => {
+      isRefreshing.value = false
+    }, 500)
+  }
+}
+
 
 function formatTanggal(dateString: string): string {
   const date = new Date(dateString);
@@ -174,6 +219,290 @@ const exportData = () => {
     modal.close()
   }
 }
+
+// Fetch pendapatan berdasarkan filter
+const fetchPendapatan = async () => {
+  try {
+    const res = await axios.get('/api/laporan/pendapatan', {
+      params: { periode: selectedFilter.value || 'month' } // default ke bulan
+    });
+    pendapatan.value = res.data;
+  } catch (error) {
+    console.error("Gagal fetch pendapatan", error);
+    toast.error("Gagal mengambil data pendapatan");
+  }
+};
+
+const fetchProduksi = async () => {
+  try {
+    const res = await axios.get('/api/laporan/produksi', {
+      params: { periode: selectedFilter.value || 'month' }
+    });
+    produksi.value = res.data;
+  } catch (e) {
+    console.error("Gagal fetch data produksi", e);
+  }
+};
+
+async function ambilHarga() {
+  try {
+    const res = await axios.get('/api/laporan/harga', {
+      params: { periode: selectedFilter.value || 'month' }
+    })
+    const now = res.data.harga_sekarang
+    const yesterday = res.data.harga_kemarin
+
+    let status = 'stabil'
+    let selisih = 0
+
+    if (now > yesterday) {
+      status = 'naik'
+      selisih = ((now - yesterday) / yesterday) * 100
+    } else if (now < yesterday) {
+      status = 'turun'
+      selisih = ((yesterday - now) / yesterday) * 100
+    }
+
+    harga.value = {
+      sekarang: now,
+      kemarin: yesterday,
+      tertinggi: res.data.harga_tertinggi,
+      tanggal_tertinggi: res.data.tanggal_tertinggi,
+      terendah: res.data.harga_terendah,
+      tanggal_terendah: res.data.tanggal_terendah,
+      status,
+      selisih
+    }
+  } catch (error) {
+    console.error('Gagal ambil data harga:', error)
+  }
+}
+
+function showCardInsight(type: string) {
+  let title = '';
+  let html = '';
+  let icon: SweetAlertIcon = 'info';
+
+  switch (type) {
+    case 'produksi-rata':
+      title = '📊 Rata-rata Produksi Telur';
+      html = `<div class="text-sm text-gray-700">
+        Rata-rata produksi telur stabil. Pertahankan pola pakan dan kebersihan kandang untuk menjaga hasil panen.
+      </div>`;
+      break;
+    case 'produksi-tertinggi':
+      title = '📈 Produksi Tertinggi';
+      html = `<div class="text-sm text-gray-700">
+        Produksi tertinggi menandakan performa kandang optimal. Lanjutkan pola pakan & ventilasi yang sama.
+      </div>`;
+      break;
+    case 'produksi-terendah':
+      title = '📉 Produksi Terendah';
+      html = `<div class="text-sm text-gray-700">
+        Produksi terendah terjadi kemungkinan karena perubahan cuaca atau kesehatan ayam. Lakukan pengecekan rutin.
+      </div>`;
+      icon = 'warning';
+      break;
+      case 'harga-saat-ini':
+  title = '💰 Harga Telur Saat Ini';
+
+  if (harga.value.status === 'naik') {
+    html = `<div class="text-sm text-gray-700">Harga telur <span class="font-semibold text-green-700">naik</span> sebesar ${harga.value.selisih.toFixed(1)}% dibanding kemarin. Pertimbangkan distribusi lebih banyak.</div>`;
+    icon = 'success';
+  } else if (harga.value.status === 'turun') {
+    html = `<div class="text-sm text-gray-700">Harga telur <span class="font-semibold text-red-600">turun</span> sebesar ${harga.value.selisih.toFixed(1)}% dibanding kemarin. Evaluasi strategi penjualan.</div>`;
+    icon = 'warning';
+  } else {
+    html = `<div class="text-sm text-gray-700">Harga telur <span class="font-semibold text-yellow-600">stabil</span> dibanding kemarin. Produksi dan distribusi bisa berjalan seperti biasa.</div>`;
+    icon = 'info';
+  }
+  break;
+    case 'harga-tertinggi':
+      title = '📈 Harga Tertinggi';
+      html = `<div class="text-sm text-gray-700">
+        Harga tertinggi bulan ini, maksimalkan distribusi dan penjualan pada momen seperti ini.
+      </div>`;
+      break;
+    case 'harga-terendah':
+      title = '📉 Harga Terendah';
+      html = `<div class="text-sm text-gray-700">
+        Harga terendah, pertimbangkan strategi stok atau tunda penjualan jika memungkinkan.
+      </div>`;
+      icon = 'warning';
+      break;
+    case 'pendapatan-total':
+      title = '💵 Pendapatan Total';
+      html = `<div class="text-sm text-gray-700">
+        Pendapatan stabil, pertahankan efisiensi produksi dan distribusi.
+      </div>`;
+      break;
+    case 'pendapatan-tertinggi':
+      title = '📈 Pendapatan Tertinggi';
+      html = `<div class="text-sm text-gray-700">
+        Pendapatan tertinggi, manfaatkan momentum untuk investasi perbaikan kandang.
+      </div>`;
+      break;
+    case 'pendapatan-terendah':
+      title = '📉 Pendapatan Terendah';
+      html = `<div class="text-sm text-gray-700">
+        Pendapatan menurun, evaluasi strategi penjualan dan biaya operasional.
+      </div>`;
+      icon = 'warning';
+      break;
+    default:
+      title = 'Insight';
+      html = `<div class="text-sm text-gray-700">Tidak ada insight khusus.</div>`;
+  }
+
+  Swal.fire({
+    title,
+    html,
+    icon,
+    confirmButtonText: 'Tutup',
+    customClass: {
+      popup: 'rounded-xl shadow-2xl animate__animated animate__fadeInDown',
+      title: 'font-bold text-blue-700 text-lg',
+      confirmButton: 'bg-blue-600 text-white rounded px-6 py-2 mt-4 font-semibold hover:bg-blue-700 transition'
+    },
+    showClass: {
+      popup: 'animate__animated animate__fadeInDown'
+    },
+    hideClass: {
+      popup: 'animate__animated animate__fadeOutUp'
+    },
+    background: '#f9fafb',
+    width: 420
+  });
+}
+
+function formatRupiah(angka: number | string | null): string {
+  if (!angka) return '-';
+  return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function tanggalIndo(dateStr: string): string {
+  if (!dateStr) return '-';
+
+  const bulan = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  const date = new Date(dateStr);
+  const day = date.getDate();
+  const month = bulan[date.getMonth()];
+  return `${day} ${month}`;
+}
+
+
+async function exportRingkasanExcel() {
+  const periode = selectedFilter.value.toLowerCase();
+
+  try {
+    // Ambil semua data sekaligus
+    const [resHarga, resProduksi, resPendapatan] = await Promise.all([
+      axios.get(`/api/laporan/harga?periode=${periode}`),
+      axios.get(`/api/laporan/produksi?periode=${periode}`),
+      axios.get(`/api/laporan/pendapatan?periode=${periode}`)
+    ]);
+
+    const harga = resHarga.data;
+    const produksi = resProduksi.data;
+    const pendapatan = resPendapatan.data;
+
+    const laporan = {
+      produksi: {
+        total: produksi.total,
+        rata_status: produksi.rata_status, // "meningkat", "menurun", "stabil"
+        tertinggi: produksi.tertinggi,
+        tanggal_tertinggi: produksi.tanggal_tertinggi,
+        terendah: produksi.terendah,
+        tanggal_terendah: produksi.tanggal_terendah,
+      },
+      klaster: {
+        besar: 130, // jika sudah ada endpoint klaster, ambil dari sana
+        sedang: 50,
+        kecil: 20,
+      },
+      harga: {
+        sekarang: harga.harga_sekarang,
+        tertinggi: harga.harga_tertinggi,
+        tanggal_tertinggi: harga.tanggal_tertinggi,
+        terendah: harga.harga_terendah,
+        tanggal_terendah: harga.tanggal_terendah,
+      },
+      pendapatan: {
+        total: pendapatan.total,
+        total_status: pendapatan.total_status,
+        rata: pendapatan.rata,
+        rata_status: pendapatan.rata_status,
+        tertinggi: pendapatan.tertinggi,
+        tanggal_tertinggi: pendapatan.tanggal_tertinggi,
+        terendah: pendapatan.terendah,
+        tanggal_terendah: pendapatan.tanggal_terendah,
+      },
+      rekomendasi: [
+        'Pertahankan pola pakan harian.',
+        'Pastikan perangkat aktif 24 jam.',
+        'Gunakan momen harga tinggi untuk distribusi besar.',
+      ],
+    };
+
+    const data = [
+      [`LAPORAN SISTEM - PERIODE ${periode.toUpperCase()}`],
+      [],
+      ['📦 Produksi Telur'],
+      ['Rata-rata', `${laporan.produksi.total} Butir (${laporan.produksi.rata_status})`],
+      ['Tertinggi', `${laporan.produksi.tertinggi} Butir (${laporan.produksi.tanggal_tertinggi})`],
+      ['Terendah', `${laporan.produksi.terendah} Butir (${laporan.produksi.tanggal_terendah})`],
+      [],
+      ['🥚 Hasil Klasterisasi Telur'],
+      ['Telur Besar', `${laporan.klaster.besar} Butir`],
+      ['Telur Sedang', `${laporan.klaster.sedang} Butir`],
+      ['Telur Kecil', `${laporan.klaster.kecil} Butir`],
+      [],
+      ['💰 Harga Telur'],
+      ['Harga Saat Ini', formatRupiah(laporan.harga.sekarang)],
+      ['Tertinggi', `${formatRupiah(laporan.harga.tertinggi)} (${tanggalIndo(laporan.harga.tanggal_tertinggi)})`],
+      ['Terendah', `${formatRupiah(laporan.harga.terendah)} (${tanggalIndo(laporan.harga.tanggal_terendah)})`],
+      [],
+      ['🧾 Pendapatan'],
+      ['Total', `${formatRupiah(laporan.pendapatan.total)} (${laporan.pendapatan.total_status})`],
+      ['Rata-rata Harian', `${formatRupiah(laporan.pendapatan.rata)} (${laporan.pendapatan.rata_status})`],
+      ['Tertinggi', `${formatRupiah(laporan.pendapatan.tertinggi)} (${laporan.pendapatan.tanggal_tertinggi})`],
+      ['Terendah', `${formatRupiah(laporan.pendapatan.terendah)} (${laporan.pendapatan.tanggal_terendah})`],
+      [],
+      ['📌 Rekomendasi Sistem'],
+      ...laporan.rekomendasi.map((item) => [item]),
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(blob, `Laporan_Sistem_${periode}.xlsx`);
+  } catch (error) {
+    console.error("❌ Gagal ekspor laporan:", error);
+  }
+}
+
+watch(selectedFilter, async () => {
+  await nextTick() // pastikan nilai sudah benar-benar berubah
+  await fetchProduksi()
+  await ambilHarga()
+  await fetchPendapatan()
+})
+
+
+onMounted(() => {
+  selectedFilter.value = 'today';
+  fetchProduksi();
+  ambilHarga();
+  fetchPendapatan();
+});
+
 </script>
 
 <template>
@@ -218,12 +547,15 @@ const exportData = () => {
                     <label class="block text-xs text-black font-poppins mb-2">
                       Harga Telur per KG
                     </label>
-                    <input
-                      v-model="form.harga"
-                      type="number"
-                      class="w-full h-9 px-4 rounded-2xl text-black border border-blue-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Masukkan harga"
-                    />
+                    <div class="relative">
+                      <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-sm text-gray-600 font-semibold">Rp</span>
+                      <input
+                        v-model="form.harga"
+                        type="number"
+                        class="w-full h-9 pl-10 pr-4 rounded-2xl text-black border border-blue-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Masukkan harga"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label class="block text-xs text-black font-poppins mb-2">
@@ -250,11 +582,6 @@ const exportData = () => {
           <div class="lg:col-span-7 gap-8">
             <!-- Controls -->
             <div class="flex flex-col justify-end sm:flex-row gap-3 mb-4">
-              <DropdownFilter
-                v-model="selectedFilter"
-                :options="filterOptions"
-                class="w-[140px]"
-              />
               <button
                 @click="refreshData"
                 class="flex items-center justify-center gap-2 w-full sm:w-[140px] h-10 px-3 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -295,8 +622,8 @@ const exportData = () => {
       <!-- Laporan Sistem Section -->
       <div class="bg-white rounded-2xl border border-blue-700 p-6 mt-8">
         <div class="mb-6">
-          <h2 class="text-xl lg:text-2xl font-bold text-blue-700 font-poppins mb-4 flex items-center gap-2">
-            <FileText class="w-6 h-6 text-blue-700" /> Laporan Sistem
+          <h2 class="text-lg lg:text-xl font-bold text-black font-poppins mb-6">
+          Laporan Sistem Klasterisasi Telur
           </h2>
           <div class="flex flex-col sm:flex-row gap-3 mb-4">
             <DropdownFilter
@@ -305,13 +632,16 @@ const exportData = () => {
               class="w-[140px]"
             />
             <button
-              @click="refreshData"
-              class="flex items-center justify-center gap-2 w-full sm:w-[140px] h-10 px-3 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                @click="refreshData"
+                class="flex items-center justify-center gap-2 w-full sm:w-[140px] h-10 px-3 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <RefreshCcw class="w-4 h-4" /> Refresh Data
+              <span>Refresh Data</span>
+              <span :class="isRefreshing ? 'animate-spin' : ''">
+                <RefreshCcw class="w-4 h-4" />
+              </span>
             </button>
             <button
-              @click="openExportModal"
+              @click="exportRingkasanExcel"
               class="flex items-center justify-center gap-2 w-full sm:w-[140px] h-10 px-3 text-xs font-semibold text-white bg-blue-800 hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-700"
             >
               <FileDown class="w-4 h-4" /> Ekspor Data
@@ -320,55 +650,125 @@ const exportData = () => {
           <ExportModal ref="exportModalRef" :onConfirm="exportData" />
         </div>
 
-        <!-- Statistik Cards -->
+        <!-- Statistik 3 Kolom -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <!-- Produksi Telur -->
-          <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 flex flex-col gap-2">
-            <div class="text-xs text-blue-700 font-semibold mb-1 flex items-center gap-2">
-              <BarChart2 class="w-4 h-4" /> Produksi Telur
-            </div>
-            <div class="text-lg font-bold text-blue-900">200 Butir</div>
-            <div class="text-xs text-gray-600">Rata-rata periode ini: <span class="font-semibold text-blue-700">Stabil</span></div>
-            <div class="text-xs text-gray-500">Tertinggi: 250 (21 Mei 2025) | Terendah: 180 (15 Mei 2025)</div>
-          </div>
-          <!-- Hasil Klasterisasi Telur -->
-          <div class="bg-green-50 border border-green-200 rounded-xl p-5 flex flex-col gap-2">
-            <div class="text-xs text-green-700 font-semibold mb-1 flex items-center gap-2">
-              <PieChart class="w-4 h-4" /> Hasil Klasterisasi Telur
-            </div>
-            <div class="text-lg font-bold text-green-900">Total: 200 Butir</div>
-            <div class="text-xs text-gray-600">
-              Besar: <span class="font-semibold text-blue-700">65%</span> (130 butir)
-              <br>
-              Sedang: <span class="font-semibold text-yellow-700">25%</span> (50 butir)
-              <br>
-              Kecil: <span class="font-semibold text-red-600">10%</span> (20 butir)
-            </div>
-            <div class="text-xs text-gray-500">Data diambil dari hasil sortir & klasterisasi periode ini.</div>
-          </div>
-          <!-- Harga Telur -->
-          <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-5 flex flex-col gap-2">
-            <div class="text-xs text-yellow-700 font-semibold mb-1 flex items-center gap-2">
-              <TrendingUp class="w-4 h-4" /> Harga Telur per KG
-            </div>
-            <div class="text-lg font-bold text-yellow-900">Rp 27.000</div>
-            <div class="text-xs text-gray-600">Perubahan: <span class="font-semibold text-yellow-700">+2%</span> dari kemarin</div>
-            <div class="text-xs text-gray-500">Tertinggi: Rp 28.000 | Terendah: Rp 25.500</div>
-          </div>
-        </div>
+          <!-- Kolom 1: Jumlah Produksi Telur -->
+          <div class="flex flex-col gap-4">
+            <h3 class="text-sm font-semibold text-gray-700">Jumlah Produksi Telur</h3>
 
-        <!-- Rekomendasi & Insight -->
-        <div class="mt-4">
-          <h3 class="text-base font-bold text-blue-700 mb-2 flex items-center gap-2">
-            <AlertCircle class="w-5 h-5 text-red-500" /> Rekomendasi Sistem
-          </h3>
-          <ul class="list-disc ml-6 text-sm text-gray-700 space-y-1">
-            <li>Periksa perangkat yang tidak aktif untuk mencegah kehilangan data produksi.</li>
-            <li>Rata-rata produksi stabil, namun lakukan pengecekan rutin pada perangkat untuk menjaga performa.</li>
-            <li>Harga telur naik 2% dari kemarin, pertimbangkan strategi penjualan atau stok.</li>
-            <li>Pastikan data sensor selalu terupdate setiap hari untuk analisis yang lebih akurat.</li>
-            <li>Gunakan fitur ekspor untuk backup data bulanan.</li>
-          </ul>
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-blue-50 transition"
+              @click="showCardInsight('produksi-rata')"
+            >
+              <p class="text-sm text-gray-600">📊 Total Produksi Telur</p>
+              <p class="text-blue-800 font-bold text-lg"> {{ produksi.total }} Butir</p>
+              <p class="text-xs text-gray-500">⚖️ Stabil dibanding periode sebelumnya</p>
+            </div>
+
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-blue-50 transition"
+              @click="showCardInsight('produksi-tertinggi')"
+            >
+              <p class="text-sm text-gray-600">📈 Produksi Tertinggi</p>
+              <p class="text-green-700 font-bold text-lg">
+                {{ produksi.tertinggi }} Butir
+              </p>
+              <p class="text-xs text-gray-500">📅 {{ tanggalIndo(produksi.tanggal_tertinggi) }}</p>
+            </div>
+
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-blue-50 transition"
+              @click="showCardInsight('produksi-terendah')"
+            >
+              <p class="text-sm text-gray-600">📉 Produksi Terendah</p>
+              <p class="text-red-600 font-bold text-lg">
+                {{ produksi.terendah }} Butir
+              </p>
+              <p class="text-xs text-gray-500">📅 {{ tanggalIndo(produksi.tanggal_terendah) }}</p>
+            </div>
+          </div>
+
+          <!-- Kolom 2: Harga Telur per KG -->
+          <div class="flex flex-col gap-4">
+            <h3 class="text-sm font-semibold text-gray-700">Harga Telur per KG</h3>
+
+            <!-- Harga Saat Ini -->
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-yellow-50 transition"
+              @click="showCardInsight('harga-saat-ini')"
+            >
+              <p class="text-sm text-gray-600">💰 Harga Saat Ini</p>
+              <p class="text-yellow-700 font-bold text-lg">{{ formatRupiah(harga.sekarang) }}</p>
+
+              <p class="text-xs text-gray-500">
+                <template v-if="harga.status === 'naik'">
+                  ⬆️ Naik {{ harga.selisih.toFixed(1) }}% dari kemarin
+                </template>
+                <template v-else-if="harga.status === 'turun'">
+                  ⬇️ Turun {{ harga.selisih.toFixed(1) }}% dari kemarin
+                </template>
+                <template v-else>
+                  ➖ Stabil dibanding kemarin
+                </template>
+              </p>
+            </div>
+
+            <!-- Harga Tertinggi -->
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-yellow-50 transition"
+              @click="showCardInsight('harga-tertinggi')"
+            >
+              <p class="text-sm text-gray-600">📈 Harga Tertinggi</p>
+              <p class="text-green-700 font-bold text-lg">
+                {{ formatRupiah(harga.tertinggi) }}
+              </p>
+              <p class="text-xs text-gray-500">📅 {{ tanggalIndo(harga.tanggal_tertinggi) }}</p>
+            </div>
+
+            <!-- Harga Terendah -->
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-yellow-50 transition"
+              @click="showCardInsight('harga-terendah')"
+            >
+              <p class="text-sm text-gray-600">📉 Harga Terendah</p>
+              <p class="text-red-600 font-bold text-lg">
+                {{ formatRupiah(harga.terendah) }}
+              </p>
+              <p class="text-xs text-gray-500">📅 {{ tanggalIndo(harga.tanggal_terendah) }}</p>
+            </div>
+          </div>
+
+          <!-- Kolom 3: Pendapatan -->
+          <div class="flex flex-col gap-4">
+            <h3 class="text-sm font-semibold text-gray-700">Pendapatan</h3>
+
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-green-50 transition"
+              @click="showCardInsight('pendapatan-total')"
+            >
+              <p class="text-sm text-gray-600">💵 Pendapatan Total</p>
+              <p class="text-blue-800 font-bold text-lg"> {{ formatRupiah(pendapatan.total) }}</p>
+              <p class="text-xs text-gray-500">⚖️ Stabil dari bulan lalu</p>
+            </div>
+
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-green-50 transition"
+              @click="showCardInsight('pendapatan-tertinggi')"
+            >
+              <p class="text-sm text-gray-600">📈 Pendapatan Tertinggi</p>
+              <p class="text-green-700 font-bold text-lg">{{ formatRupiah(pendapatan.tertinggi) }}</p>
+              <p class="text-xs text-gray-500">📅 {{ tanggalIndo(pendapatan.tanggal_tertinggi) }}</p>
+            </div>
+
+            <div
+              class="border rounded-md p-4 bg-white shadow-sm cursor-pointer hover:bg-green-50 transition"
+              @click="showCardInsight('pendapatan-terendah')"
+            >
+              <p class="text-sm text-gray-600">📉 Pendapatan Terendah</p>
+              <p class="text-green-700 font-bold text-lg">{{ formatRupiah(pendapatan.terendah) }}</p>
+              <p class="text-xs text-gray-500">📅 {{ tanggalIndo(pendapatan.tanggal_terendah) }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

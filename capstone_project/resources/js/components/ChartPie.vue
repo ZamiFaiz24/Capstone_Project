@@ -8,12 +8,15 @@ import {
   ArcElement,
 } from 'chart.js'
 
-ChartJS.register(Title, Tooltip, Legend, ArcElement)
+import type { ChartData, ChartOptions } from 'chart.js'
 
 const props = defineProps<{
-  chartData: any,
-  chartOptions?: any
+  chartData: ChartData<'pie'>,
+  chartOptions?: ChartOptions<'pie'>
 }>()
+
+ChartJS.register(Title, Tooltip, Legend, ArcElement)
+
 
 const pieData = {
   labels: ['Besar', 'Kecil'],
@@ -35,5 +38,7 @@ const pieOptions = {
 </script>
 
 <template>
-  <Pie :data="chartData" :options="chartOptions" />
+  <div class="w-full h-full min-h-[200px]">
+    <Pie :data="chartData" :options="chartOptions" />
+  </div>
 </template>

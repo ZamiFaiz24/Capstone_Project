@@ -7,13 +7,17 @@ use Inertia\Inertia;
 use App\Models\Models\Data\PerangkatStatus;
 use App\Models\Models\Data\HargaTelur;
 use App\Models\Models\Data\LogNotifikasi;
+use App\Models\Models\Data\DataKlaster;
 use Carbon\Carbon;
+
 
 class DashboardController extends Controller
 {
     // Halaman utama dashboard
     public function index()
     {
+        $jumlahTelurHariIni = DataKlaster::whereDate('waktu_klaster', Carbon::today())->count();
+
         // Ambil harga hari ini dan kemarin
         $hargaHariIni = HargaTelur::orderByDesc('tanggal')->first();
         $hargaKemarin = HargaTelur::whereDate('tanggal', now()->subDay()->toDateString())->first();
@@ -28,9 +32,23 @@ class DashboardController extends Controller
         // Ambil status perangkat terakhir
         $statusPerangkat = PerangkatStatus::latest()->first()?->status ?? 'OFF';
 
+        $dataKlaster = DataKlaster::whereDate('waktu_klaster', now())
+            ->orderBy('waktu_klaster', 'desc')
+            ->limit(5)->get()
+            ->map(function ($item, $index) {
+                return [
+                    'berat' => $item->berat_telur,
+                    'intensitas' => $item->intensitas,
+                    'klaster' => $item->klaster,
+                    'ukuran' => $item->label_ukuran,
+                    'kualitas' => $item->label_kualitas,
+                    'label' => $item->label_tampilan,
+                ];
+            });
+
         $logPerangkat = LogNotifikasi::where('tipe', 'perangkat')
             ->latest('dibuat_pada')
-            ->take(10)
+            ->take(5)
             ->get()
             ->map(function ($item) {
                 $status = '-';
@@ -52,10 +70,12 @@ class DashboardController extends Controller
 
 
         return Inertia::render('admin/Dashboard', [
+            'jumlahTelurHariIni' => $jumlahTelurHariIni, 
             'statusPerangkat' => $statusPerangkat,
             'hargaHariIni' => $hargaHariIni,
             'persentaseKenaikan' => $persentaseKenaikan,
-            'logPerangkatData' => $logPerangkat, // Tanpa spasi di akhir!
+            'logPerangkatData' => $logPerangkat,
+            'dataKlaster' => $dataKlaster,
         ]);
     }
 
