@@ -26,10 +26,10 @@ Capstone_Project/
 - **MySQL / SQLite** (basis data)
 - **Chart.js** (grafik interaktif)
 
-## 🛠️ Cara Menjalankan Proyek
+## 📄 Lisensi
 
-### 1. Frontend (Visualisasi)
-```bash
-cd capstone_project
-npm install
-npm run dev
+Proyek ini dilisensikan di bawah [MIT License](LICENSE). Silakan lihat file LICENSE untuk informasi lebih lanjut.
+
+## 👨‍💻 Kontributor
+
+- [@ZamiFaiz24](https://github.com/ZamiFaiz24)
